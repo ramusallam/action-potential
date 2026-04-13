@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Action Potential</title>
+<style>
+  :root {
+    --bg-0: #05070f;
+    --bg-1: #0b1022;
+    --ink-hi: #f2f5fb;
+    --ink-mid: #9fb0ca;
+    --ink-low: #58688a;
+    --na: #ff7a6b;
+    --k: #5cc9ff;
+    --protein: #b084ff;
+    --atp: #ffd166;
+    --amber: #d4a554;
+    --accent: #6ee7e5;
+    --panel: rgba(255,255,255,0.02);
+    --panel-border: rgba(255,255,255,0.06);
+    --note-bg: #fdf1c6;
+    --note-ink: #2a1e08;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, #0f1630 0%, transparent 70%),
+      linear-gradient(180deg, #05070f 0%, #030510 100%);
+    background-attachment: fixed;
+    color: var(--ink-hi);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  header {
+    padding: 14px 32px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  header .title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+  .step-indicator {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-low);
+    letter-spacing: 1px;
+  }
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px 20px;
+  }
+  .handbook-banner {
+    margin: 0 auto 14px;
+    padding: 9px 18px;
+    background: linear-gradient(90deg, rgba(255, 209, 102, 0.08), rgba(110, 231, 229, 0.04));
+    border: 1px solid rgba(255, 209, 102, 0.15);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #cfc5aa;
+  }
+  .handbook-banner .hb-tag {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 4px 8px;
+    background: rgba(255, 209, 102, 0.18);
+    color: #ffd166;
+    border-radius: 5px;
+  }
+  .handbook-banner strong { color: #ffd166; font-weight: 600; }
+  .stage {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .canvas-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transition: opacity 300ms ease;
+  }
+  .phase-bar {
+    padding: 16px 28px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+    border-top: 1px solid var(--panel-border);
+    background: rgba(5, 8, 20, 0.4);
+  }
+  .phase-name {
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    color: var(--accent);
+    transition: color 400ms ease;
+  }
+  .voltage-block {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .graph-wrap {
+    width: 320px;
+    height: 70px;
+    opacity: 1;
+    transition: opacity 300ms ease;
+  }
+  .graph-wrap.hidden { opacity: 0.15; }
+  .voltage-readout {
+    font-size: 24px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+    color: var(--ink-hi);
+    min-width: 100px;
+    text-align: right;
+    transition: opacity 300ms ease;
+  }
+  .voltage-readout.hidden { opacity: 0; }
+  .content {
+    margin-top: 14px;
+  }
+  .notes-card {
+    background: var(--note-bg);
+    color: var(--note-ink);
+    padding: 14px 22px 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.55;
+    position: relative;
+    box-shadow:
+      0 14px 40px rgba(255, 209, 102, 0.08),
+      inset 0 0 0 1px rgba(0,0,0,0.02);
+  }
+  .step-heading {
+    font-weight: 700;
+    font-size: 16px;
+    color: #7a3a00;
+    margin-bottom: 4px;
+    letter-spacing: 0.2px;
+  }
+  .notes-card p { margin: 0 0 6px; }
+  .notes-card strong { font-weight: 700; color: #2a1e08; }
+  .sketch-prompt {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(122, 86, 0, 0.25);
+    font-size: 13px;
+    font-style: italic;
+    color: #8a6100;
+  }
+  .sketch-prompt .pen { font-style: normal; margin-right: 4px; }
+  nav {
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: var(--ink-hi);
+    cursor: pointer;
+    transition: background 150ms, transform 50ms, border-color 150ms;
+  }
+  button:hover:not(:disabled) {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+  }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: 0.3; cursor: not-allowed; }
+  button.primary {
+    background: linear-gradient(180deg, #6ee7e5 0%, #3dbfc0 100%);
+    color: #03252a;
+    border-color: rgba(110, 231, 229, 0.4);
+    box-shadow: 0 6px 20px rgba(110, 231, 229, 0.25);
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  .btn-group { display: flex; gap: 10px; }
+  @media (max-width: 720px) {
+    .phase-bar { grid-template-columns: 1fr; }
+    .voltage-block { justify-content: space-between; }
+    .graph-wrap { width: 200px; }
+    .phase-name { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">Action Potential</div>
+  <div class="step-indicator" id="stepIndicator">01 / 10</div>
+</header>
+
+<main>
+  <div class="handbook-banner">
+    <div class="hb-tag">3a. LECTURE</div>
+    <div>Follow along in the <strong>3a. Lecture</strong> section of your handbook. For each step: <strong>label it</strong>, <strong>copy the yellow box</strong>, and <strong>draw a simple diagram</strong>. Use <strong>color</strong>.</div>
+  </div>
+  <div class="stage">
+    <canvas id="canvas" width="1600" height="650"></canvas>
+    <div class="phase-bar">
+      <div class="phase-name" id="phaseName">Step 1: The Pump</div>
+      <div class="voltage-block">
+        <div class="graph-wrap" id="graphWrap">
+          <svg id="minigraph" viewBox="0 0 320 70" style="width:100%; height:100%"></svg>
+        </div>
+        <div class="voltage-readout" id="voltage">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="notes-card">
+      <div class="step-heading" id="stepHeading">Step 1: The Neuron</div>
+      <p id="notes"></p>
+      <div class="sketch-prompt" id="sketchPrompt"><span class="pen">✎</span>Now sketch what you see above in your notes. Use color where it helps.</div>
+    </div>
+  </div>
+
+  <nav>
+    <button id="resetBtn">Start Over</button>
+    <div class="btn-group">
+      <button id="prevBtn">← Back</button>
+      <button id="nextBtn" class="primary">Next →</button>
+    </div>
+  </nav>
+</main>
+
+<script>
+// =====================================================
+//  Canvas setup
+// =====================================================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const W = canvas.width;   // 1600
+const H = canvas.height;  // 650
+const MID = H / 2;
+const MEM_TOP = MID - 22;
+const MEM_BOT = MID + 22;
+
+const PUMP_X = 360;
+const NA_CHANNEL_X = 850;
+const K_CHANNEL_X = 1220;
+const CHANNEL_HALF_W = 52;
+
+// colors
+const C_NA = '#ff7a6b';
+const C_NA_GLOW = 'rgba(255, 122, 107,';
+const C_K = '#5cc9ff';
+const C_K_GLOW = 'rgba(92, 201, 255,';
+const C_PROT = '#b084ff';
+const C_PROT_GLOW = 'rgba(176, 132, 255,';
+const C_ATP = '#ffd166';
+const C_AMBER = '#d4a554';
+const C_ACCENT = '#6ee7e5';
+
+// =====================================================
+//  Ion — with motion trail
+// =====================================================
+class Ion {
+  constructor(type, x, y, region) {
+    this.type = type;
+    this.x = x; this.y = y;
+    this.vx = (Math.random() - 0.5) * 0.6;
+    this.vy = (Math.random() - 0.5) * 0.6;
+    this.region = region;
+    this.state = 'free';
+    this.r = type === 'P' ? 11 : 19;
+    this.opacity = 1;
+    this.fadeOut = false;
+    this.pathFn = null;
+    this.pathT = 0;
+    this.pathSpeed = 0;
+    this.destRegion = null;
+    this.trail = [];
+    this.wiggle = Math.random() * Math.PI * 2;
+  }
+  setTransit(pathFn, speed, destRegion) {
+    this.state = 'transit';
+    this.pathFn = pathFn;
+    this.pathT = 0;
+    this.pathSpeed = speed;
+    this.destRegion = destRegion;
+  }
+  update(dt) {
+    if (this.fadeOut) {
+      this.opacity -= 0.02;
+      if (this.opacity < 0) this.opacity = 0;
+    }
+    // record trail
+    this.trail.unshift({ x: this.x, y: this.y });
+    if (this.trail.length > 8) this.trail.pop();
+
+    if (this.state === 'transit') {
+      this.pathT += this.pathSpeed * dt;
+      if (this.pathT >= 1) {
+        this.pathT = 1;
+        this.state = 'free';
+        this.region = this.destRegion;
+        this.vx = (Math.random() - 0.5) * 1.4;
+        this.vy = (Math.random() - 0.5) * 1.4;
+      }
+      const p = this.pathFn(this.pathT);
+      this.x = p.x;
+      this.y = p.y;
+      return;
+    }
+    this.wiggle += 0.08;
+    const jit = this.type === 'P' ? 0.08 : 0.28;
+    this.vx += (Math.random() - 0.5) * jit;
+    this.vy += (Math.random() - 0.5) * jit;
+    this.vx *= 0.93;
+    this.vy *= 0.93;
+    const cap = this.type === 'P' ? 0.6 : 1.8;
+    const sp = Math.hypot(this.vx, this.vy);
+    if (sp > cap) { this.vx = this.vx / sp * cap; this.vy = this.vy / sp * cap; }
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.region === 'outside') {
+      if (this.y > MEM_TOP - this.r - 6) { this.y = MEM_TOP - this.r - 6; this.vy = -Math.abs(this.vy); }
+      if (this.y < 40) { this.y = 40; this.vy = Math.abs(this.vy); }
+    } else if (this.region === 'inside') {
+      if (this.y < MEM_BOT + this.r + 6) { this.y = MEM_BOT + this.r + 6; this.vy = Math.abs(this.vy); }
+      if (this.y > H - 40) { this.y = H - 40; this.vy = -Math.abs(this.vy); }
+    }
+    if (this.x < 40) { this.x = 40; this.vx = Math.abs(this.vx); }
+    if (this.x > W - 40) { this.x = W - 40; this.vx = -Math.abs(this.vx); }
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.opacity;
+    if (this.type === 'P') {
+      // small dim anion marker — NOT a big actor
+      ctx.fillStyle = 'rgba(120, 90, 170, 0.55)';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(200, 170, 255, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '600 11px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('−', this.x, this.y);
+      ctx.restore();
+      return;
+    }
+    const core = this.type === 'Na' ? C_NA : C_K;
+    const glowFn = this.type === 'Na' ? C_NA_GLOW : C_K_GLOW;
+    // trail
+    for (let i = this.trail.length - 1; i > 0; i--) {
+      const p = this.trail[i];
+      const a = (1 - i / this.trail.length) * 0.18;
+      ctx.fillStyle = glowFn + a + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, this.r * 0.85, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // outer glow
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 2.6);
+    g.addColorStop(0, glowFn + '0.55)');
+    g.addColorStop(0.4, glowFn + '0.25)');
+    g.addColorStop(1, glowFn + '0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    // core gradient
+    const cg = ctx.createRadialGradient(this.x - this.r * 0.3, this.y - this.r * 0.3, 0, this.x, this.y, this.r);
+    cg.addColorStop(0, 'rgba(255,255,255,0.9)');
+    cg.addColorStop(0.25, core);
+    cg.addColorStop(1, core);
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.font = '600 16px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.type === 'Na' ? 'Na⁺' : 'K⁺', this.x, this.y + 1);
+    ctx.restore();
+  }
+}
+
+// =====================================================
+//  State
+// =====================================================
+let ions = [];
+let animT = 0;
+let currentSceneIdx = 0;
+let gates = { na: 0, k: 0 };
+let gateTargets = { na: 0, k: 0 };
+let sceneLocal = {};
+let sceneFadeT = 0;
+
+function clearField() {
+  ions = [];
+  gates = { na: 0, k: 0 };
+  gateTargets = { na: 0, k: 0 };
+  sceneLocal = {};
+}
+
+// =====================================================
+//  Drawing helpers
+// =====================================================
+function drawBackground(ctx) {
+  // outside: stronger cyan wash (positive zone)
+  const outG = ctx.createLinearGradient(0, 0, 0, MEM_TOP);
+  outG.addColorStop(0, 'rgba(92, 201, 255, 0.18)');
+  outG.addColorStop(1, 'rgba(92, 201, 255, 0.04)');
+  ctx.fillStyle = outG;
+  ctx.fillRect(0, 0, W, MEM_TOP);
+  // inside: stronger violet wash (negative zone)
+  const inG = ctx.createLinearGradient(0, MEM_BOT, 0, H);
+  inG.addColorStop(0, 'rgba(176, 132, 255, 0.05)');
+  inG.addColorStop(1, 'rgba(176, 132, 255, 0.22)');
+  ctx.fillStyle = inG;
+  ctx.fillRect(0, MEM_BOT, W, H - MEM_BOT);
+}
+
+function drawMembrane(ctx) {
+  // two soft amber bands representing lipid bilayer, no polka dots
+  const topG = ctx.createLinearGradient(0, MEM_TOP - 12, 0, MEM_TOP + 12);
+  topG.addColorStop(0, 'rgba(212, 165, 84, 0)');
+  topG.addColorStop(0.5, 'rgba(212, 165, 84, 0.65)');
+  topG.addColorStop(1, 'rgba(212, 165, 84, 0.15)');
+  ctx.fillStyle = topG;
+  ctx.fillRect(0, MEM_TOP - 12, W, 24);
+
+  // middle tails
+  ctx.fillStyle = 'rgba(212, 165, 84, 0.08)';
+  ctx.fillRect(0, MEM_TOP + 8, W, MEM_BOT - MEM_TOP - 16);
+
+  const botG = ctx.createLinearGradient(0, MEM_BOT - 12, 0, MEM_BOT + 12);
+  botG.addColorStop(0, 'rgba(212, 165, 84, 0.15)');
+  botG.addColorStop(0.5, 'rgba(212, 165, 84, 0.65)');
+  botG.addColorStop(1, 'rgba(212, 165, 84, 0)');
+  ctx.fillStyle = botG;
+  ctx.fillRect(0, MEM_BOT - 12, W, 24);
+
+  // subtle highlight lines
+  ctx.strokeStyle = 'rgba(255, 220, 170, 0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, MEM_TOP);
+  ctx.lineTo(W, MEM_TOP);
+  ctx.moveTo(0, MEM_BOT);
+  ctx.lineTo(W, MEM_BOT);
+  ctx.stroke();
+}
+
+function drawSideLabels(ctx) {
+  ctx.save();
+  // OUTSIDE — cyan, bold, prominent at top
+  ctx.font = '700 26px -apple-system, system-ui';
+  ctx.fillStyle = 'rgba(92, 201, 255, 0.85)';
+  ctx.textAlign = 'left';
+  ctx.fillText('OUTSIDE OF NEURON', 36, 44);
+  ctx.font = '500 14px -apple-system, system-ui';
+  ctx.fillStyle = 'rgba(92, 201, 255, 0.55)';
+  ctx.fillText('(high Na⁺ · positive)', 36, 68);
+  // INSIDE — violet, bold, prominent at bottom
+  ctx.font = '700 26px -apple-system, system-ui';
+  ctx.fillStyle = 'rgba(176, 132, 255, 0.9)';
+  ctx.fillText('INSIDE OF NEURON', 36, H - 46);
+  ctx.font = '500 14px -apple-system, system-ui';
+  ctx.fillStyle = 'rgba(176, 132, 255, 0.6)';
+  ctx.fillText('(high K⁺ + locked P⁻ · negative)', 36, H - 22);
+  ctx.restore();
+}
+
+function drawChargeMarks(ctx, outsideSign, insideSign) {
+  ctx.save();
+  ctx.font = '700 38px -apple-system, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = outsideSign === '+' ? 'rgba(255, 122, 107, 0.35)' : 'rgba(92, 201, 255, 0.35)';
+  for (let x = 140; x < W; x += 220) ctx.fillText(outsideSign, x, MEM_TOP - 38);
+  ctx.fillStyle = insideSign === '-' ? 'rgba(176, 132, 255, 0.4)' : 'rgba(255, 122, 107, 0.35)';
+  for (let x = 140; x < W; x += 220) ctx.fillText(insideSign, x, MEM_BOT + 38);
+  ctx.restore();
+}
+
+// pump: clean capsule with spinning ATP rotor
+function drawPump(ctx, t, opts = {}) {
+  const cx = PUMP_X, cy = MID;
+  ctx.save();
+  // capsule body
+  const bw = 70, bh = 110;
+  const grad = ctx.createLinearGradient(cx - bw, cy - bh, cx + bw, cy + bh);
+  grad.addColorStop(0, 'rgba(110, 231, 229, 0.18)');
+  grad.addColorStop(1, 'rgba(52, 110, 130, 0.35)');
+  ctx.fillStyle = grad;
+  roundRect(ctx, cx - bw/2, cy - bh, bw, bh * 2, 32);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(110, 231, 229, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // ATP rotor
+  const spin = t / 180;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(spin);
+  // glow
+  const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 38);
+  rg.addColorStop(0, 'rgba(255, 209, 102, 0.6)');
+  rg.addColorStop(1, 'rgba(255, 209, 102, 0)');
+  ctx.fillStyle = rg;
+  ctx.beginPath(); ctx.arc(0, 0, 38, 0, Math.PI * 2); ctx.fill();
+  // core
+  ctx.fillStyle = C_ATP;
+  ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+  // subtle spokes
+  ctx.strokeStyle = 'rgba(255, 190, 80, 0.7)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    const a = (i * Math.PI * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 8, Math.sin(a) * 8);
+    ctx.lineTo(Math.cos(a) * 18, Math.sin(a) * 18);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // ATP label
+  ctx.fillStyle = 'rgba(42, 26, 0, 0.85)';
+  ctx.font = '700 12px -apple-system, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ATP', cx, cy);
+  // lower label
+  if (opts.showLabel !== false) {
+    ctx.fillStyle = 'rgba(159, 176, 202, 0.55)';
+    ctx.font = '500 13px -apple-system, system-ui';
+    ctx.fillText('Na / K pump', cx, cy + bh + 24);
+  }
+  ctx.restore();
+}
+
+// rounded rect
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// pump paths
+function lerp(a, b, t) { return a + (b - a) * t; }
+function pumpInToOut(p) {
+  const cx = PUMP_X, cy = MID;
+  if (p < 0.5) {
+    const s = p / 0.5;
+    return { x: cx + lerp(-30, 0, s), y: cy + lerp(85, 0, s) };
+  } else {
+    const s = (p - 0.5) / 0.5;
+    return { x: cx + lerp(0, 30, s), y: cy + lerp(0, -85, s) };
+  }
+}
+function pumpOutToIn(p) {
+  const cx = PUMP_X, cy = MID;
+  if (p < 0.5) {
+    const s = p / 0.5;
+    return { x: cx + lerp(30, 0, s), y: cy + lerp(-85, 0, s) };
+  } else {
+    const s = (p - 0.5) / 0.5;
+    return { x: cx + lerp(0, -30, s), y: cy + lerp(0, 85, s) };
+  }
+}
+
+// voltage-gated channel: two curved lips
+function drawChannel(ctx, x, openness, ionColor, label, status) {
+  ctx.save();
+  // pore base
+  const baseG = ctx.createLinearGradient(x - CHANNEL_HALF_W, 0, x + CHANNEL_HALF_W, 0);
+  baseG.addColorStop(0, 'rgba(20, 30, 55, 0.9)');
+  baseG.addColorStop(0.5, 'rgba(10, 18, 35, 0.95)');
+  baseG.addColorStop(1, 'rgba(20, 30, 55, 0.9)');
+  ctx.fillStyle = baseG;
+  roundRect(ctx, x - CHANNEL_HALF_W, MEM_TOP - 14, CHANNEL_HALF_W * 2, MEM_BOT - MEM_TOP + 28, 10);
+  ctx.fill();
+  ctx.strokeStyle = openness > 0.3
+    ? ionColor
+    : 'rgba(159, 176, 202, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // ion color glow when open
+  if (openness > 0.15) {
+    const gh = (MEM_BOT - MEM_TOP + 16) * openness;
+    const yTop = MEM_TOP - 8 + (MEM_BOT - MEM_TOP + 16 - gh) / 2;
+    const gradInside = ctx.createLinearGradient(x - CHANNEL_HALF_W, 0, x + CHANNEL_HALF_W, 0);
+    const alpha = Math.min(0.45, openness * 0.5);
+    gradInside.addColorStop(0, ionColor + (Math.floor(alpha * 255).toString(16).padStart(2, '0')));
+    gradInside.addColorStop(0.5, ionColor);
+    gradInside.addColorStop(1, ionColor + (Math.floor(alpha * 255).toString(16).padStart(2, '0')));
+    ctx.save();
+    ctx.globalAlpha = 0.2 + openness * 0.3;
+    ctx.fillStyle = ionColor;
+    roundRect(ctx, x - CHANNEL_HALF_W + 8, yTop, CHANNEL_HALF_W * 2 - 16, gh, 6);
+    ctx.fill();
+    ctx.restore();
+  }
+  // gates (two lip flaps)
+  const gateH = 28;
+  const gap = openness * 22;
+  ctx.fillStyle = ionColor;
+  // top gate
+  roundRect(ctx, x - CHANNEL_HALF_W + 12, MEM_TOP - 10, CHANNEL_HALF_W * 2 - 24, gateH - gap, 4);
+  ctx.fill();
+  // bottom gate
+  roundRect(ctx, x - CHANNEL_HALF_W + 12, MEM_BOT + 10 - (gateH - gap), CHANNEL_HALF_W * 2 - 24, gateH - gap, 4);
+  ctx.fill();
+  // label & status
+  if (label) {
+    ctx.fillStyle = 'rgba(159, 176, 202, 0.55)';
+    ctx.font = '500 13px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, MEM_BOT + 80);
+    ctx.fillStyle = openness > 0.5 ? ionColor : 'rgba(159, 176, 202, 0.5)';
+    ctx.font = '700 12px -apple-system, system-ui';
+    ctx.fillText(status || (openness > 0.5 ? 'OPEN' : 'CLOSED'), x, MEM_BOT + 100);
+  }
+  ctx.restore();
+}
+
+function channelPath(x, fromRegion, toRegion) {
+  return (p) => {
+    let y;
+    if (fromRegion === 'outside') y = lerp(MEM_TOP - 60, MEM_BOT + 60, p);
+    else y = lerp(MEM_BOT + 60, MEM_TOP - 60, p);
+    return { x: x + Math.sin(p * Math.PI) * 3, y };
+  };
+}
+
+// =====================================================
+//  Scenes
+// =====================================================
+
+// 1. The Pump — isolated, calm, cyclic
+const sceneThePump = {
+  phase: 'Step 5: The Pump (Answer 1)',
+  phaseColor: '#ffd166',
+  voltage: null,
+  graphIdx: null,
+  notes: "The <strong>sodium-potassium pump</strong> uses <strong>ATP</strong> (the energy molecule from biology with Sierra or Meredith) to push <strong>3 Na⁺ OUT</strong> and pull <strong>2 K⁺ IN</strong>. That's how Na⁺ ends up outside and K⁺ ends up inside.",
+  setup() {
+    clearField();
+    sceneLocal = { spawn: 0, cycle: 0 };
+  },
+  update(dt) {
+    sceneLocal.spawn += dt;
+    if (sceneLocal.spawn > 900) {
+      sceneLocal.spawn = 0;
+      const i = sceneLocal.cycle++ % 5;
+      if (i < 3) {
+        const ion = new Ion('Na', PUMP_X - 30, MID + 85, 'inside');
+        ion.setTransit(pumpInToOut, 0.0016, 'outside');
+        ions.push(ion);
+      } else {
+        const ion = new Ion('K', PUMP_X + 30, MID - 85, 'outside');
+        ion.setTransit(pumpOutToIn, 0.0016, 'inside');
+        ions.push(ion);
+      }
+    }
+    ions.forEach(i => i.update(dt));
+    ions = ions.filter(ion => {
+      if (ion.state === 'free') {
+        const d = Math.hypot(ion.x - PUMP_X, ion.y - MID);
+        if (d > 520) ion.fadeOut = true;
+      }
+      return ion.opacity > 0.05;
+    });
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t, { showLabel: true });
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    // directional hint labels
+    ctx.save();
+    ctx.font = '600 20px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255, 122, 107, 0.75)';
+    ctx.fillText('3 Na⁺ ↑ out', PUMP_X - 230, MID - 30);
+    ctx.fillStyle = 'rgba(92, 201, 255, 0.75)';
+    ctx.fillText('2 K⁺ ↓ in', PUMP_X + 230, MID + 30);
+    ctx.restore();
+  }
+};
+
+// Helpers for realistic neuron
+function seededRng(seed) {
+  let s = seed;
+  return function() { s = (s * 16807) % 2147483647; return s / 2147483647; };
+}
+function buildDendriteTree(x0, y0, angle, length, depth, rng, segments = []) {
+  if (depth === 0 || length < 18) return segments;
+  const endX = x0 + Math.cos(angle) * length;
+  const endY = y0 + Math.sin(angle) * length;
+  const cpX = x0 + Math.cos(angle) * length * 0.5 + (rng() - 0.5) * 30;
+  const cpY = y0 + Math.sin(angle) * length * 0.5 + (rng() - 0.5) * 30;
+  segments.push({ x1: x0, y1: y0, cx: cpX, cy: cpY, x2: endX, y2: endY, w: depth * 2 });
+  const branchAngle = 0.45 + rng() * 0.3;
+  const lenScale = 0.6 + rng() * 0.15;
+  buildDendriteTree(endX, endY, angle - branchAngle, length * lenScale, depth - 1, rng, segments);
+  buildDendriteTree(endX, endY, angle + branchAngle, length * lenScale, depth - 1, rng, segments);
+  if (rng() > 0.6) {
+    buildDendriteTree(endX, endY, angle + (rng() - 0.5) * 0.3, length * 0.5, depth - 1, rng, segments);
+  }
+  return segments;
+}
+
+// 1. The Neuron (realistic)
+const sceneNeuron = {
+  phase: 'Step 1: The Neuron',
+  phaseColor: '#ffb4a2',
+  voltage: null,
+  graphIdx: null,
+  notes: "Meet the neuron. It has <strong>dendrites</strong> (receive signals), a <strong>cell body</strong> (process), an <strong>axon</strong> (send the signal), and <strong>terminals</strong> (pass it to the next cell). Today we will understand how a signal travels down this cell.",
+  setup() {
+    clearField();
+    const rng = seededRng(7);
+    const soma = { x: 340, y: MID };
+    sceneLocal = {
+      soma,
+      pulse: 0,
+      trees: [
+        buildDendriteTree(soma.x - 70, soma.y - 85, -Math.PI * 0.72, 130, 4, rng),
+        buildDendriteTree(soma.x - 95, soma.y - 35, -Math.PI * 0.92, 120, 4, rng),
+        buildDendriteTree(soma.x - 98, soma.y + 25, Math.PI * 0.94, 120, 4, rng),
+        buildDendriteTree(soma.x - 70, soma.y + 85, Math.PI * 0.72, 130, 4, rng),
+        buildDendriteTree(soma.x - 30, soma.y - 100, -Math.PI * 0.55, 110, 3, rng),
+        buildDendriteTree(soma.x - 30, soma.y + 100, Math.PI * 0.55, 110, 3, rng)
+      ]
+    };
+  },
+  update(dt) { sceneLocal.pulse += dt / 500; },
+  draw(ctx, t) {
+    ctx.fillStyle = '#05070f';
+    ctx.fillRect(0, 0, W, H);
+    const { soma, trees } = sceneLocal;
+
+    // dendrites
+    ctx.lineCap = 'round';
+    trees.forEach(tree => {
+      tree.forEach(seg => {
+        ctx.strokeStyle = `rgba(209, 154, 143, ${0.55 + seg.w * 0.05})`;
+        ctx.lineWidth = seg.w;
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.quadraticCurveTo(seg.cx, seg.cy, seg.x2, seg.y2);
+        ctx.stroke();
+      });
+    });
+
+    // soma glow
+    const glow = ctx.createRadialGradient(soma.x, soma.y, 0, soma.x, soma.y, 180);
+    glow.addColorStop(0, 'rgba(245, 208, 197, 0.16)');
+    glow.addColorStop(1, 'rgba(245, 208, 197, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(soma.x, soma.y, 180, 0, Math.PI * 2); ctx.fill();
+
+    // organic soma blob
+    const somaFill = ctx.createRadialGradient(soma.x - 25, soma.y - 25, 10, soma.x, soma.y, 120);
+    somaFill.addColorStop(0, '#f8d9ce');
+    somaFill.addColorStop(0.7, '#d49a8d');
+    somaFill.addColorStop(1, '#a86456');
+    ctx.fillStyle = somaFill;
+    ctx.beginPath();
+    ctx.moveTo(soma.x - 95, soma.y + 5);
+    ctx.bezierCurveTo(soma.x - 100, soma.y - 70, soma.x - 30, soma.y - 105, soma.x + 25, soma.y - 95);
+    ctx.bezierCurveTo(soma.x + 85, soma.y - 85, soma.x + 110, soma.y - 30, soma.x + 105, soma.y + 5);
+    ctx.bezierCurveTo(soma.x + 110, soma.y + 50, soma.x + 60, soma.y + 95, soma.x + 5, soma.y + 100);
+    ctx.bezierCurveTo(soma.x - 55, soma.y + 105, soma.x - 95, soma.y + 65, soma.x - 95, soma.y + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(140, 75, 60, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // nucleus
+    ctx.fillStyle = '#8f4c3e';
+    ctx.beginPath();
+    ctx.arc(soma.x - 8, soma.y - 8, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5a2a1e';
+    ctx.beginPath();
+    ctx.arc(soma.x + 2, soma.y - 2, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // axon hillock (triangular)
+    ctx.fillStyle = '#d49a8d';
+    ctx.beginPath();
+    ctx.moveTo(soma.x + 95, soma.y - 28);
+    ctx.lineTo(soma.x + 95, soma.y + 28);
+    ctx.lineTo(soma.x + 170, soma.y + 14);
+    ctx.lineTo(soma.x + 170, soma.y - 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(140, 75, 60, 0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // axon with gentle wave
+    ctx.strokeStyle = '#d49a8d';
+    ctx.lineWidth = 28;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(soma.x + 170, soma.y);
+    ctx.bezierCurveTo(soma.x + 430, soma.y - 14, soma.x + 760, soma.y + 14, W - 260, soma.y);
+    ctx.stroke();
+    // subtle axon highlight
+    ctx.strokeStyle = 'rgba(255, 220, 208, 0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(soma.x + 170, soma.y - 9);
+    ctx.bezierCurveTo(soma.x + 430, soma.y - 23, soma.x + 760, soma.y + 5, W - 260, soma.y - 9);
+    ctx.stroke();
+
+    // terminals
+    const termX = W - 260;
+    const termAngles = [-0.55, -0.28, -0.05, 0.22, 0.5, -0.42, 0.38];
+    termAngles.forEach((a, i) => {
+      const len = 120 + (i % 3) * 20;
+      ctx.strokeStyle = '#d49a8d';
+      ctx.lineWidth = 10 + (i % 2) * 3;
+      ctx.beginPath();
+      ctx.moveTo(termX, soma.y);
+      const mx = termX + Math.cos(a) * len * 0.55;
+      const my = soma.y + Math.sin(a) * len * 0.55 + (i % 2 === 0 ? 8 : -8);
+      const ex = termX + Math.cos(a) * len;
+      const ey = soma.y + Math.sin(a) * len;
+      ctx.quadraticCurveTo(mx, my, ex, ey);
+      ctx.stroke();
+      // bouton
+      const bg = ctx.createRadialGradient(ex - 3, ey - 3, 2, ex, ey, 18);
+      bg.addColorStop(0, '#fae2d4');
+      bg.addColorStop(1, '#c78373');
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 14 + (i % 3) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // zoom-in highlight on the axon
+    const hx = 980, hy = soma.y;
+    const hp = 1 + Math.sin(sceneLocal.pulse) * 0.08;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 209, 102, ${0.65 + Math.sin(sceneLocal.pulse) * 0.25})`;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 5]);
+    ctx.strokeRect(hx - 85 * hp, hy - 50 * hp, 170 * hp, 100 * hp);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '600 16px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('we zoom in on this patch →', hx, hy - 75);
+    ctx.restore();
+
+    // labels
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '600 16px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('dendrites', 90, MID - 260);
+    ctx.fillText('cell body', soma.x, soma.y + 160);
+    ctx.fillText('axon', 700, soma.y - 40);
+    ctx.fillText('terminals', W - 160, soma.y + 200);
+    ctx.restore();
+  }
+};
+
+// 2. Polarized — same side view as Step 3, all polarized, no wave
+const scenePolarized = {
+  phase: 'Step 2: Polarized',
+  phaseColor: '#5cc9ff',
+  voltage: -70,
+  graphIdx: null,
+  notes: "The <strong>outside</strong> of the neuron is <strong>POSITIVE (+)</strong>. The <strong>inside</strong> is <strong>NEGATIVE (−)</strong>. This is called <strong>POLARIZED</strong>. A resting neuron is polarized all along the axon.",
+  setup() { clearField(); sceneLocal = { zoomT: 0 }; },
+  update(dt) { sceneLocal.zoomT = Math.min(1, sceneLocal.zoomT + dt / 600); },
+  draw(ctx, t) {
+    // background stays fixed (not zoomed)
+    ctx.fillStyle = '#05070f';
+    ctx.fillRect(0, 0, W, H);
+    // zoom-in transition: content grows into place
+    const z = sceneLocal.zoomT;
+    const scale = 0.4 + 0.6 * z;
+    ctx.save();
+    ctx.globalAlpha = z;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-W / 2, -H / 2);
+    const axonTop = MID - 70;
+    const axonBot = MID + 70;
+    // axon body
+    const axonG = ctx.createLinearGradient(0, axonTop, 0, axonBot);
+    axonG.addColorStop(0, 'rgba(212, 165, 84, 0.08)');
+    axonG.addColorStop(0.5, 'rgba(176, 132, 255, 0.12)');
+    axonG.addColorStop(1, 'rgba(212, 165, 84, 0.08)');
+    ctx.fillStyle = axonG;
+    ctx.fillRect(0, axonTop, W, axonBot - axonTop);
+    // membrane lines
+    ctx.strokeStyle = 'rgba(212, 165, 84, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, axonTop); ctx.lineTo(W, axonTop);
+    ctx.moveTo(0, axonBot); ctx.lineTo(W, axonBot);
+    ctx.stroke();
+    // + and − signs along axon, all polarized (no wave)
+    ctx.font = '700 30px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let x = 60; x < W; x += 75) {
+      ctx.fillStyle = 'rgba(92, 201, 255, 0.9)';
+      ctx.fillText('+', x, axonTop - 40);
+      ctx.fillStyle = 'rgba(176, 132, 255, 0.9)';
+      ctx.fillText('−', x, axonBot + 40);
+    }
+    // labels
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = '500 14px -apple-system, system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('outside of neuron', 30, axonTop - 80);
+    ctx.fillText('inside of neuron', 30, axonBot + 85);
+    ctx.restore();
+    ctx.restore();
+  }
+};
+
+// 3. The Wave — flipping charges propagating = the action potential
+const sceneWave = {
+  phase: 'Step 3: The Wave (The Action Potential)',
+  phaseColor: '#ff7a6b',
+  voltage: null,
+  graphIdx: null,
+  notes: "An action potential is a <strong>wave of charge flip</strong> that travels down the axon in <strong>small local sections</strong>. Only a tiny patch flips at a time. The rest of the neuron stays polarized.",
+  setup() { clearField(); sceneLocal = { wavePos: -150, speed: 420 }; },
+  update(dt) {
+    sceneLocal.wavePos += sceneLocal.speed * dt / 1000;
+    if (sceneLocal.wavePos > W + 200) sceneLocal.wavePos = -150;
+  },
+  draw(ctx, t) {
+    ctx.fillStyle = '#05070f';
+    ctx.fillRect(0, 0, W, H);
+    const axonTop = MID - 70;
+    const axonBot = MID + 70;
+    // axon body
+    const axonG = ctx.createLinearGradient(0, axonTop, 0, axonBot);
+    axonG.addColorStop(0, 'rgba(212, 165, 84, 0.08)');
+    axonG.addColorStop(0.5, 'rgba(176, 132, 255, 0.12)');
+    axonG.addColorStop(1, 'rgba(212, 165, 84, 0.08)');
+    ctx.fillStyle = axonG;
+    ctx.fillRect(0, axonTop, W, axonBot - axonTop);
+    // membrane lines
+    ctx.strokeStyle = 'rgba(212, 165, 84, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, axonTop); ctx.lineTo(W, axonTop);
+    ctx.moveTo(0, axonBot); ctx.lineTo(W, axonBot);
+    ctx.stroke();
+    // wave highlight
+    const waveG = ctx.createLinearGradient(sceneLocal.wavePos - 120, 0, sceneLocal.wavePos + 120, 0);
+    waveG.addColorStop(0, 'rgba(255, 209, 102, 0)');
+    waveG.addColorStop(0.5, 'rgba(255, 209, 102, 0.28)');
+    waveG.addColorStop(1, 'rgba(255, 209, 102, 0)');
+    ctx.fillStyle = waveG;
+    ctx.fillRect(sceneLocal.wavePos - 120, axonTop - 60, 240, axonBot - axonTop + 120);
+    // + and − signs along axon
+    ctx.font = '700 30px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let x = 60; x < W; x += 75) {
+      const distFromWave = Math.abs(x - sceneLocal.wavePos);
+      const flipped = distFromWave < 90;
+      if (flipped) {
+        ctx.fillStyle = '#b084ff';
+        ctx.fillText('−', x, axonTop - 40);
+        ctx.fillStyle = '#ff7a6b';
+        ctx.fillText('+', x, axonBot + 40);
+      } else {
+        // dimmed — emphasize that only wave region flips
+        ctx.fillStyle = 'rgba(92, 201, 255, 0.4)';
+        ctx.fillText('+', x, axonTop - 40);
+        ctx.fillStyle = 'rgba(176, 132, 255, 0.4)';
+        ctx.fillText('−', x, axonBot + 40);
+      }
+    }
+    // labels
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = '500 14px -apple-system, system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('outside of neuron', 30, axonTop - 80);
+    ctx.fillText('inside of neuron', 30, axonBot + 85);
+    // direction
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.9)';
+    ctx.font = '600 20px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('action potential traveling down the axon →', W / 2, H - 50);
+    ctx.restore();
+  }
+};
+
+// 4. Two Puzzles — poses both questions
+const scenePuzzle = {
+  phase: 'Step 4: Two Puzzles',
+  phaseColor: '#ffd166',
+  voltage: null,
+  graphIdx: null,
+  notes: "Two puzzles to solve. <strong>(1)</strong> Na⁺ sits OUTSIDE. K⁺ sits INSIDE. How did they get separated? <strong>(2)</strong> K⁺ is a positive ion, yet the inside is still NEGATIVE. How is that possible?",
+  setup() {
+    clearField();
+    for (let i = 0; i < 12; i++) {
+      ions.push(new Ion('Na', 140 + i * 115, MEM_TOP - 60 - Math.random() * 120, 'outside'));
+    }
+    for (let i = 0; i < 10; i++) {
+      ions.push(new Ion('K', 150 + i * 140, MEM_BOT + 60 + Math.random() * 120, 'inside'));
+    }
+  },
+  update(dt) { ions.forEach(i => i.update(dt)); },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    // two numbered puzzle callouts (centered to avoid clash with side labels)
+    ctx.save();
+    ctx.font = '700 20px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.95)';
+    ctx.fillText('1.  How did Na⁺ end up outside and K⁺ inside?', W / 2, 42);
+    ctx.fillText('2.  If K⁺ is positive, why is the inside still negative?', W / 2, H - 32);
+    ctx.restore();
+  }
+};
+
+// 6. Proteins Inside — answers puzzle 2
+const sceneProteins = {
+  phase: 'Step 6: Proteins Inside (Answer 2)',
+  phaseColor: '#b084ff',
+  voltage: -70,
+  graphIdx: 0,
+  notes: "Inside the cell sit large <strong>negatively charged proteins (P⁻)</strong>. They are <strong>locked inside</strong> and cannot cross the membrane. Their negative charge outweighs the K⁺, so the inside stays <strong>NEGATIVE overall</strong>.",
+  setup() {
+    clearField();
+    for (let i = 0; i < 12; i++) {
+      ions.push(new Ion('Na', 120 + i * 120, MEM_TOP - 70 - Math.random() * 130, 'outside'));
+    }
+    for (let i = 0; i < 10; i++) {
+      ions.push(new Ion('K', 140 + i * 140, MEM_BOT + 60 + Math.random() * 100, 'inside'));
+    }
+    for (let i = 0; i < 12; i++) {
+      ions.push(new Ion('P', 120 + i * 115, MEM_BOT + 150 + Math.random() * 150, 'inside'));
+    }
+  },
+  update(dt) { ions.forEach(i => i.update(dt)); },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+    ctx.save();
+    ctx.fillStyle = 'rgba(176, 132, 255, 0.95)';
+    ctx.font = '600 18px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('P⁻ proteins are LOCKED inside — they make the inside negative', W / 2, H - 30);
+    ctx.restore();
+  }
+};
+
+// 5. Why negative inside
+const sceneWhyNegative = {
+  phase: 'Step 6: Why the Inside Is Negative',
+  phaseColor: '#b084ff',
+  voltage: -70,
+  graphIdx: 0,
+  notes: "Puzzle: K⁺ is inside and K⁺ is positive, so why is the inside <strong>negative</strong>? Because large <strong>negatively charged molecules (P⁻)</strong> are locked inside and can't cross the membrane. Their negative charge outweighs the K⁺, making the inside negative overall.",
+  setup() {
+    clearField();
+    for (let i = 0; i < 12; i++) {
+      ions.push(new Ion('Na', 100 + i * 120, MEM_TOP - 80 - Math.random() * 160, 'outside'));
+    }
+    for (let i = 0; i < 8; i++) {
+      ions.push(new Ion('K', 160 + i * 170, MEM_BOT + 80 + Math.random() * 120, 'inside'));
+    }
+    for (let i = 0; i < 9; i++) {
+      ions.push(new Ion('P', 140 + i * 170, MEM_BOT + 150 + Math.random() * 180, 'inside'));
+    }
+  },
+  update(dt) { ions.forEach(i => i.update(dt)); },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+  }
+};
+
+// 4. Resting potential
+const sceneResting = {
+  phase: 'Step 7: Resting Potential',
+  phaseColor: '#6ee7e5',
+  voltage: -70,
+  graphIdx: 1,
+  notes: "Resting potential ≈ <strong>−70 mV</strong>. Gated channels <strong>CLOSED</strong>. Pump still running. The neuron is primed and ready.",
+  setup() {
+    clearField();
+    for (let i = 0; i < 14; i++) {
+      ions.push(new Ion('Na', 100 + i * 105, MEM_TOP - 80 - Math.random() * 150, 'outside'));
+    }
+    for (let i = 0; i < 10; i++) {
+      ions.push(new Ion('K', 150 + i * 140, MEM_BOT + 80 + Math.random() * 100, 'inside'));
+    }
+    for (let i = 0; i < 7; i++) {
+      ions.push(new Ion('P', 180 + i * 190, MEM_BOT + 170 + Math.random() * 150, 'inside'));
+    }
+    gateTargets = { na: 0, k: 0 };
+  },
+  update(dt) {
+    gates.na += (gateTargets.na - gates.na) * 0.1;
+    gates.k += (gateTargets.k - gates.k) * 0.1;
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ gated channel');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+  }
+};
+
+// 5. Threshold & all-or-nothing
+const sceneThreshold = {
+  phase: 'Step 8: Threshold (All or Nothing)',
+  phaseColor: '#ffd166',
+  voltage: -55,
+  graphIdx: 2,
+  notes: "A <strong>signal</strong> = positive charge arriving from a neighboring patch that just fired. It trickles in and raises the voltage here. If voltage reaches <strong>threshold (≈ −55 mV)</strong>, the Na⁺ gates open and a full AP fires. Below threshold → nothing. <strong>ALL-OR-NOTHING</strong>.",
+  setup() {
+    sceneResting.setup();
+    sceneLocal = { pulse: 0 };
+  },
+  update(dt) {
+    sceneLocal.pulse += dt / 400;
+    gates.na += (gateTargets.na - gates.na) * 0.1;
+    gates.k += (gateTargets.k - gates.k) * 0.1;
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ gated channel');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+    // incoming positive charge arriving from the left (upstream neighbor)
+    ctx.save();
+    const pulse = 0.5 + 0.5 * Math.sin(sceneLocal.pulse);
+    ctx.font = '700 28px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // drifting + symbols moving right into the patch
+    for (let i = 0; i < 5; i++) {
+      const phase = (sceneLocal.pulse + i * 0.8) % 3;
+      const x = 60 + phase * 220;
+      if (x > NA_CHANNEL_X - 60) continue;
+      const fade = 1 - phase / 3;
+      ctx.fillStyle = `rgba(255, 209, 102, ${0.4 + fade * 0.5})`;
+      ctx.fillText('+', x, MEM_BOT + 80);
+    }
+    // arrow
+    ctx.strokeStyle = `rgba(255, 209, 102, ${0.55 + pulse * 0.35})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(50, MEM_BOT + 130);
+    ctx.lineTo(NA_CHANNEL_X - 120, MEM_BOT + 130);
+    ctx.lineTo(NA_CHANNEL_X - 140, MEM_BOT + 120);
+    ctx.moveTo(NA_CHANNEL_X - 120, MEM_BOT + 130);
+    ctx.lineTo(NA_CHANNEL_X - 140, MEM_BOT + 140);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.95)';
+    ctx.font = '600 16px -apple-system, system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('positive charge from the patch next door', 50, MEM_BOT + 160);
+    ctx.restore();
+  }
+};
+
+// 6. Depolarization
+const sceneDepolarize = {
+  phase: 'Step 9: Depolarization',
+  phaseColor: '#ff7a6b',
+  voltage: 30,
+  graphIdx: 3,
+  notes: "<strong>Na⁺ gates open</strong> in this local patch. Na⁺ rushes <strong>IN</strong>. This tiny section flips from negative to <strong>positive (≈ +30 mV)</strong>. <strong>DEPOLARIZATION</strong>. Only this patch flips, not the whole cell.",
+  setup() {
+    sceneResting.setup();
+    gateTargets = { na: 1, k: 0 };
+    sceneLocal = { rushed: 0, closeAt: 2400 };
+  },
+  update(dt) {
+    gates.na += (gateTargets.na - gates.na) * 0.2;
+    gates.k += (gateTargets.k - gates.k) * 0.1;
+    sceneLocal.rushed += dt;
+    if (sceneLocal.rushed > 110 && gates.na > 0.5 && animT < sceneLocal.closeAt) {
+      sceneLocal.rushed = 0;
+      const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - NA_CHANNEL_X) < 260);
+      if (cands.length) {
+        const ion = cands[Math.floor(Math.random() * cands.length)];
+        ion.setTransit(channelPath(NA_CHANNEL_X, 'outside', 'inside'), 0.002, 'inside');
+      }
+    }
+    if (animT > sceneLocal.closeAt) gateTargets.na = 0;
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ gated channel');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '−', '+');
+  }
+};
+
+// 7. Repolarization
+const sceneRepolarize = {
+  phase: 'Step 10: Repolarization',
+  phaseColor: '#5cc9ff',
+  voltage: -70,
+  graphIdx: 4,
+  notes: "<strong>K⁺ gates open</strong> (slower than Na⁺). K⁺ rushes <strong>OUT</strong>. This patch returns to negative. <strong>REPOLARIZATION</strong>.",
+  setup() {
+    clearField();
+    // Na+ now inside (accumulated from depolarization)
+    for (let i = 0; i < 10; i++) {
+      ions.push(new Ion('Na', NA_CHANNEL_X - 220 + i * 55, MEM_BOT + 80 + Math.random() * 140, 'inside'));
+    }
+    for (let i = 0; i < 7; i++) {
+      ions.push(new Ion('Na', 100 + i * 140, MEM_TOP - 80 - Math.random() * 120, 'outside'));
+    }
+    for (let i = 0; i < 10; i++) {
+      ions.push(new Ion('K', 150 + i * 140, MEM_BOT + 80 + Math.random() * 100, 'inside'));
+    }
+    for (let i = 0; i < 7; i++) {
+      ions.push(new Ion('P', 180 + i * 190, MEM_BOT + 170 + Math.random() * 150, 'inside'));
+    }
+    gates = { na: 0, k: 0 };
+    gateTargets = { na: 0, k: 1 };
+    sceneLocal = { rushed: 0 };
+  },
+  update(dt) {
+    gates.na += (gateTargets.na - gates.na) * 0.1;
+    gates.k += (gateTargets.k - gates.k) * 0.08;
+    sceneLocal.rushed += dt;
+    if (sceneLocal.rushed > 130 && gates.k > 0.4) {
+      sceneLocal.rushed = 0;
+      const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 250);
+      if (cands.length) {
+        const ion = cands[Math.floor(Math.random() * cands.length)];
+        ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.002, 'outside');
+      }
+    }
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ gated channel');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+  }
+};
+
+// 8. Refractory (directional protection)
+const sceneRefractory = {
+  phase: 'Step 11: Refractory Period',
+  phaseColor: '#9aadc8',
+  voltage: -80,
+  graphIdx: 5,
+  notes: "K⁺ gates close slowly. Voltage dips to ≈ <strong>−80 mV</strong>. This patch <strong>cannot fire again yet</strong>. That's the protection: signal moves <strong>ONE direction only</strong>.",
+  setup() {
+    sceneRepolarize.setup();
+    gateTargets = { na: 0, k: 1 };
+    sceneLocal = { rushed: 0, closeAt: 2600 };
+  },
+  update(dt) {
+    gates.na += (gateTargets.na - gates.na) * 0.1;
+    gates.k += (gateTargets.k - gates.k) * 0.05;
+    sceneLocal.rushed += dt;
+    if (animT > sceneLocal.closeAt) gateTargets.k = 0;
+    if (sceneLocal.rushed > 180 && gates.k > 0.3) {
+      sceneLocal.rushed = 0;
+      const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 280);
+      if (cands.length) {
+        const ion = cands[Math.floor(Math.random() * cands.length)];
+        ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.0018, 'outside');
+      }
+    }
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ gated channel', 'LOCKED');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    drawChargeMarks(ctx, '+', '−');
+    ctx.save();
+    ctx.fillStyle = 'rgba(154, 173, 200, 0.8)';
+    ctx.font = '600 18px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('this patch is locked → signal can only move forward →', W / 2, 80);
+    ctx.restore();
+  }
+};
+
+// 9. Propagation (stuck sodium pushes next channel)
+const scenePropagation = {
+  phase: 'Step 12: Propagation',
+  phaseColor: '#ff7a6b',
+  voltage: 30,
+  graphIdx: 3,
+  notes: "The Na⁺ that rushed in is <strong>stuck</strong>. It can't cross the membrane and can't go back (refractory). Because it's all positive, it <strong>repels itself</strong> and pushes <strong>sideways</strong> to the next patch. That push reaches the next patch's threshold, Na⁺ gates there open, and the whole process <strong>starts over</strong> one patch down. This is how the action potential travels forward.",
+  setup() {
+    clearField();
+    // This patch: fired, Na+ inside, K+ gates open, refractory
+    for (let i = 0; i < 14; i++) {
+      ions.push(new Ion('Na', 200 + i * 50, MEM_BOT + 80 + Math.random() * 160, 'inside'));
+    }
+    for (let i = 0; i < 8; i++) {
+      ions.push(new Ion('Na', 80 + i * 110, MEM_TOP - 80 - Math.random() * 120, 'outside'));
+    }
+    for (let i = 0; i < 6; i++) {
+      ions.push(new Ion('P', 150 + i * 150, MEM_BOT + 200 + Math.random() * 130, 'inside'));
+    }
+    // Next patch channel (rightmost) about to open
+    gates = { na: 0.1, k: 0 };
+    gateTargets = { na: 1, k: 0 };
+    sceneLocal = { push: 0, rushed: 0 };
+  },
+  update(dt) {
+    // animate stuck Na+ drifting rightward as if being pushed
+    sceneLocal.push += dt;
+    ions.filter(i => i.type === 'Na' && i.region === 'inside' && i.state === 'free').forEach(i => {
+      i.vx += 0.08; // constant rightward drift
+    });
+    // eventually open next-patch Na channel at K_CHANNEL_X
+    gates.na += (gateTargets.na - gates.na) * 0.1;
+    sceneLocal.rushed += dt;
+    if (sceneLocal.rushed > 140 && gates.na > 0.4) {
+      sceneLocal.rushed = 0;
+      const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 280);
+      if (cands.length) {
+        const ion = cands[Math.floor(Math.random() * cands.length)];
+        ion.setTransit(channelPath(K_CHANNEL_X, 'outside', 'inside'), 0.002, 'inside');
+      }
+    }
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    // left channel = refractory (closed, locked) — use Na position but keep it closed
+    drawChannel(ctx, NA_CHANNEL_X, 0, C_NA, 'this patch (refractory)', 'LOCKED');
+    drawChannel(ctx, K_CHANNEL_X, gates.na, C_NA, 'NEXT patch (Na⁺)', gates.na > 0.5 ? 'OPENING' : 'CLOSED');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    // push arrow
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 122, 107, 0.8)';
+    ctx.font = '600 18px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Na⁺ builds up and pushes →', (NA_CHANNEL_X + K_CHANNEL_X)/2, H - 100);
+    // arrow
+    const bob = Math.sin(t / 300) * 6;
+    ctx.strokeStyle = 'rgba(255, 122, 107, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(NA_CHANNEL_X + 80 + bob, H - 150);
+    ctx.lineTo(K_CHANNEL_X - 80 + bob, H - 150);
+    ctx.lineTo(K_CHANNEL_X - 100 + bob, H - 165);
+    ctx.moveTo(K_CHANNEL_X - 80 + bob, H - 150);
+    ctx.lineTo(K_CHANNEL_X - 100 + bob, H - 135);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+// 10. When channels lose control
+const sceneChaos = {
+  phase: 'Step 12: When It Breaks',
+  phaseColor: '#ff5c5c',
+  voltage: null,
+  graphIdx: null,
+  notes: "Channels stuck open, slow to close, or pump failing → uncontrolled firing → <strong>SEIZURE</strong>. <strong>Epilepsy</strong> meds and some toxins (scorpion, pufferfish) target these channels.",
+  setup() {
+    sceneResting.setup();
+    gateTargets = { na: 1, k: 1 };
+    sceneLocal = { rushed: 0 };
+  },
+  update(dt) {
+    gates.na += (gateTargets.na - gates.na) * 0.2;
+    gates.k += (gateTargets.k - gates.k) * 0.2;
+    sceneLocal.rushed += dt;
+    if (sceneLocal.rushed > 70) {
+      sceneLocal.rushed = 0;
+      const naCands = ions.filter(i => i.type === 'Na' && i.state === 'free' && Math.abs(i.x - NA_CHANNEL_X) < 320);
+      if (naCands.length) {
+        const ion = naCands[Math.floor(Math.random() * naCands.length)];
+        const from = ion.region;
+        const to = from === 'outside' ? 'inside' : 'outside';
+        ion.setTransit(channelPath(NA_CHANNEL_X, from, to), 0.003, to);
+      }
+      const kCands = ions.filter(i => i.type === 'K' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 320);
+      if (kCands.length) {
+        const ion = kCands[Math.floor(Math.random() * kCands.length)];
+        const from = ion.region;
+        const to = from === 'outside' ? 'inside' : 'outside';
+        ion.setTransit(channelPath(K_CHANNEL_X, from, to), 0.003, to);
+      }
+    }
+    ions.forEach(i => i.update(dt));
+  },
+  draw(ctx, t) {
+    drawBackground(ctx);
+    const flash = 0.04 + 0.04 * Math.sin(t / 140);
+    ctx.fillStyle = `rgba(255, 92, 92, ${flash})`;
+    ctx.fillRect(0, 0, W, H);
+    drawMembrane(ctx);
+    drawPump(ctx, t);
+    drawChannel(ctx, NA_CHANNEL_X, gates.na, C_NA, 'Na⁺ channel', 'STUCK OPEN');
+    drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ channel', 'STUCK OPEN');
+    ions.forEach(i => i.draw(ctx));
+    drawSideLabels(ctx);
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 92, 92, 0.9)';
+    ctx.font = '700 22px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ uncontrolled firing', W / 2, 80);
+    ctx.restore();
+  }
+};
+
+// 12. Summary: the whole process + the labeled graph
+const sceneFullGraph = {
+  phase: 'Step 13: Summary',
+  phaseColor: '#ff3b3b',
+  voltage: null,
+  graphIdx: null,
+  sketchPrompt: "<span class=\"pen\">✎</span>Copy the full graph with all labels. Then write 2–3 sentences in your own words that tie the whole process together.",
+  notes: "<strong>Put it all together.</strong> The <strong>pump</strong> sets the gradient. A signal hits <strong>threshold (−55 mV)</strong>. <strong>Na⁺ gates open → depolarize (+40 mV)</strong>. <strong>K⁺ gates open → repolarize</strong>. Voltage dips (<strong>refractory</strong>). Back to <strong>resting (−70 mV)</strong>. This wave travels down the axon one small patch at a time.",
+  setup() { clearField(); sceneLocal = { drawT: 0 }; },
+  update(dt) { sceneLocal.drawT = Math.min(1, sceneLocal.drawT + dt / 3000); },
+  draw(ctx, t) {
+    ctx.fillStyle = '#05070f';
+    ctx.fillRect(0, 0, W, H);
+    const gx = 160, gy = 70, gw = W - 260, gh = H - 180;
+    const tMax = 5.5, mvMin = -95, mvMax = 50;
+    const toX = ms => gx + (ms / tMax) * gw;
+    const toY = mv => gy + ((mvMax - mv) / (mvMax - mvMin)) * gh;
+    // axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(gx, gy); ctx.lineTo(gx, gy + gh);
+    ctx.lineTo(gx + gw, gy + gh);
+    ctx.stroke();
+    // y ticks
+    ctx.font = '500 16px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    [40, 0, -55, -70, -90].forEach(mv => {
+      const y = toY(mv);
+      ctx.fillText(mv.toString(), gx - 12, y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(gx - 6, y); ctx.lineTo(gx, y);
+      ctx.stroke();
+    });
+    ctx.save();
+    ctx.translate(48, gy + gh / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '600 18px -apple-system, system-ui';
+    ctx.fillText('Voltage (mV)', 0, 0);
+    ctx.restore();
+    // x ticks
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = '500 16px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let ms = 0; ms <= 5; ms++) {
+      const x = toX(ms);
+      ctx.fillText(ms.toString(), x, gy + gh + 10);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(x, gy + gh); ctx.lineTo(x, gy + gh + 5);
+      ctx.stroke();
+    }
+    ctx.font = '600 18px -apple-system, system-ui';
+    ctx.fillText('Time (ms)', gx + gw / 2, gy + gh + 44);
+    // dashed reference lines
+    ctx.strokeStyle = 'rgba(255, 209, 102, 0.3)';
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gx, toY(-55)); ctx.lineTo(gx + gw, toY(-55));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(110, 231, 229, 0.3)';
+    ctx.beginPath();
+    ctx.moveTo(gx, toY(-70)); ctx.lineTo(gx + gw, toY(-70));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // the AP curve
+    const pts = [
+      [0, -70], [0.8, -70],
+      [0.9, -68], [1.0, -72], [1.1, -70],
+      [1.25, -62], [1.45, -55],
+      [1.65, 0], [1.9, 40],
+      [2.1, 20], [2.35, -30], [2.6, -70],
+      [2.9, -85], [3.4, -80], [4.0, -74], [4.7, -71], [5.5, -70]
+    ];
+    const endIdx = Math.max(2, Math.floor(sceneLocal.drawT * pts.length));
+    const drawPts = pts.slice(0, endIdx);
+    const screen = drawPts.map(([ms, mv]) => [toX(ms), toY(mv)]);
+    ctx.strokeStyle = '#ff3b3b';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(255, 59, 59, 0.6)';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    if (screen.length >= 2) {
+      ctx.moveTo(screen[0][0], screen[0][1]);
+      for (let i = 1; i < screen.length - 1; i++) {
+        const [x1, y1] = screen[i];
+        const [x2, y2] = screen[i + 1];
+        ctx.quadraticCurveTo(x1, y1, (x1 + x2) / 2, (y1 + y2) / 2);
+      }
+      const [lx, ly] = screen[screen.length - 1];
+      ctx.lineTo(lx, ly);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // labels appear after curve finishes
+    if (sceneLocal.drawT >= 1) {
+      ctx.font = '600 14px -apple-system, system-ui';
+      // Threshold label
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.95)';
+      ctx.fillText('Threshold −55', gx + 8, toY(-55) - 14);
+      // Resting
+      ctx.fillStyle = 'rgba(110, 231, 229, 0.95)';
+      ctx.fillText('Resting state −70', gx + 8, toY(-70) + 16);
+      // Stimulus
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2.5;
+      const sx = toX(1.2);
+      ctx.beginPath();
+      ctx.moveTo(sx, toY(-70) + 50);
+      ctx.lineTo(sx, toY(-70) + 14);
+      ctx.lineTo(sx - 6, toY(-70) + 22);
+      ctx.moveTo(sx, toY(-70) + 14);
+      ctx.lineTo(sx + 6, toY(-70) + 22);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.font = '600 13px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Stimulus', sx, toY(-70) + 66);
+      // Depolarization (angled)
+      ctx.save();
+      ctx.translate(toX(1.55), toY(-8));
+      ctx.rotate(-1.15);
+      ctx.fillStyle = 'rgba(255, 122, 107, 0.98)';
+      ctx.font = '600 15px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Depolarization', 0, 0);
+      ctx.restore();
+      // Peak glow dot
+      const peakX = toX(1.9), peakY = toY(40);
+      const pg = ctx.createRadialGradient(peakX, peakY, 0, peakX, peakY, 20);
+      pg.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      pg.addColorStop(0.4, 'rgba(255, 100, 100, 0.7)');
+      pg.addColorStop(1, 'rgba(255, 60, 60, 0)');
+      ctx.fillStyle = pg;
+      ctx.beginPath();
+      ctx.arc(peakX, peakY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      // Peak label
+      ctx.fillStyle = 'white';
+      ctx.font = '700 16px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Action Potential (+40)', peakX, peakY - 28);
+      // Repolarization (angled)
+      ctx.save();
+      ctx.translate(toX(2.22), toY(-8));
+      ctx.rotate(1.15);
+      ctx.fillStyle = 'rgba(92, 201, 255, 0.98)';
+      ctx.font = '600 15px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Repolarization', 0, 0);
+      ctx.restore();
+      // Refractory
+      ctx.fillStyle = 'rgba(154, 173, 200, 0.98)';
+      ctx.font = '600 14px -apple-system, system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('Refractory period', toX(3.5), toY(-89) + 18);
+    }
+    // title
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '700 20px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('The Action Potential', W / 2, 38);
+    ctx.restore();
+  }
+};
+
+const scenes = [
+  sceneNeuron,
+  scenePolarized,
+  sceneWave,
+  scenePuzzle,
+  sceneThePump,
+  sceneProteins,
+  sceneResting,
+  sceneThreshold,
+  sceneDepolarize,
+  sceneRepolarize,
+  sceneRefractory,
+  scenePropagation,
+  sceneFullGraph
+];
+
+// =====================================================
+//  Mini voltage graph
+// =====================================================
+const minigraph = document.getElementById("minigraph");
+const graphWrap = document.getElementById("graphWrap");
+const gW = 320, gH = 70;
+function mvToMiniY(mv) { return gH - 10 - ((mv + 90) / 130) * (gH - 20); }
+const markerPoints = [
+  { x: 30,  mv: -70 }, // 0: why-negative
+  { x: 60,  mv: -70 }, // 1: resting
+  { x: 100, mv: -55 }, // 2: threshold
+  { x: 140, mv: 30 },  // 3: depolarize
+  { x: 190, mv: -70 }, // 4: repolarize
+  { x: 220, mv: -80 }, // 5: refractory
+];
+function renderMinigraph(activeIdx) {
+  minigraph.innerHTML = "";
+  const svgNS = "http://www.w3.org/2000/svg";
+  // axis baseline
+  const axis = document.createElementNS(svgNS, "line");
+  axis.setAttribute("x1", 10); axis.setAttribute("y1", gH - 10);
+  axis.setAttribute("x2", gW - 4); axis.setAttribute("y2", gH - 10);
+  axis.setAttribute("stroke", "rgba(159, 176, 202, 0.15)");
+  axis.setAttribute("stroke-width", "1");
+  minigraph.appendChild(axis);
+  // resting reference
+  const rest = document.createElementNS(svgNS, "line");
+  rest.setAttribute("x1", 10); rest.setAttribute("y1", mvToMiniY(-70));
+  rest.setAttribute("x2", gW - 4); rest.setAttribute("y2", mvToMiniY(-70));
+  rest.setAttribute("stroke", "rgba(110, 231, 229, 0.3)");
+  rest.setAttribute("stroke-width", "1");
+  rest.setAttribute("stroke-dasharray", "3,4");
+  minigraph.appendChild(rest);
+  // threshold reference
+  const thr = document.createElementNS(svgNS, "line");
+  thr.setAttribute("x1", 10); thr.setAttribute("y1", mvToMiniY(-55));
+  thr.setAttribute("x2", gW - 4); thr.setAttribute("y2", mvToMiniY(-55));
+  thr.setAttribute("stroke", "rgba(255, 209, 102, 0.25)");
+  thr.setAttribute("stroke-width", "1");
+  thr.setAttribute("stroke-dasharray", "3,4");
+  minigraph.appendChild(thr);
+  if (activeIdx != null && activeIdx >= 0) {
+    const pts = markerPoints.slice(0, activeIdx + 1);
+    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${mvToMiniY(p.mv)}`).join(' ');
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("stroke", "#6ee7e5");
+    path.setAttribute("stroke-width", "2.5");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    minigraph.appendChild(path);
+    const cur = pts[pts.length - 1];
+    // glow dot
+    const glow = document.createElementNS(svgNS, "circle");
+    glow.setAttribute("cx", cur.x); glow.setAttribute("cy", mvToMiniY(cur.mv));
+    glow.setAttribute("r", 10);
+    glow.setAttribute("fill", "rgba(110, 231, 229, 0.3)");
+    minigraph.appendChild(glow);
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("cx", cur.x); dot.setAttribute("cy", mvToMiniY(cur.mv));
+    dot.setAttribute("r", 4); dot.setAttribute("fill", "#6ee7e5");
+    minigraph.appendChild(dot);
+  }
+}
+
+// =====================================================
+//  UI
+// =====================================================
+const phaseNameEl = document.getElementById("phaseName");
+const voltageEl = document.getElementById("voltage");
+const notesEl = document.getElementById("notes");
+const stepHeadingEl = document.getElementById("stepHeading");
+const sketchPromptEl = document.getElementById("sketchPrompt");
+const stepIndicator = document.getElementById("stepIndicator");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+function setScene(i) {
+  currentSceneIdx = i;
+  animT = 0;
+  sceneFadeT = 0;
+  const s = scenes[i];
+  if (s.setup) s.setup();
+  phaseNameEl.textContent = s.phase;
+  phaseNameEl.style.color = s.phaseColor;
+  if (s.voltage == null) {
+    voltageEl.classList.add("hidden");
+  } else {
+    voltageEl.classList.remove("hidden");
+    voltageEl.textContent = (s.voltage > 0 ? '+' : '') + s.voltage + ' mV';
+  }
+  notesEl.innerHTML = s.notes;
+  stepHeadingEl.textContent = s.phase;
+  sketchPromptEl.innerHTML = s.sketchPrompt
+    || "<span class=\"pen\">✎</span>Now sketch a quick diagram of what you see above. Use color where it helps.";
+  stepIndicator.textContent = `${pad2(i + 1)} / ${pad2(scenes.length)}`;
+  prevBtn.disabled = i === 0;
+  nextBtn.disabled = i === scenes.length - 1;
+  nextBtn.textContent = i === scenes.length - 1 ? 'Done' : 'Next →';
+  renderMinigraph(s.graphIdx);
+  if (s.graphIdx == null) graphWrap.classList.add("hidden");
+  else graphWrap.classList.remove("hidden");
+}
+
+prevBtn.addEventListener("click", () => { if (currentSceneIdx > 0) setScene(currentSceneIdx - 1); });
+nextBtn.addEventListener("click", () => { if (currentSceneIdx < scenes.length - 1) setScene(currentSceneIdx + 1); });
+resetBtn.addEventListener("click", () => setScene(0));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" && currentSceneIdx < scenes.length - 1) setScene(currentSceneIdx + 1);
+  if (e.key === "ArrowLeft" && currentSceneIdx > 0) setScene(currentSceneIdx - 1);
+});
+
+// =====================================================
+//  Main loop
+// =====================================================
+let lastTs = null;
+function tick(ts) {
+  if (lastTs == null) lastTs = ts;
+  const dt = Math.min(50, ts - lastTs);
+  lastTs = ts;
+  animT += dt;
+  sceneFadeT = Math.min(1, sceneFadeT + dt / 600);
+  const s = scenes[currentSceneIdx];
+  if (s.update) s.update(dt);
+  // clear with subtle vignette
+  ctx.save();
+  ctx.fillStyle = '#05070f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = sceneFadeT;
+  s.draw(ctx, animT);
+  ctx.restore();
+  requestAnimationFrame(tick);
+}
+
+setScene(0);
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
