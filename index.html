@@ -185,46 +185,6 @@
     justify-content: space-between;
     gap: 12px;
   }
-  .damage-panel {
-    margin-top: 18px;
-    padding: 12px 16px 14px;
-    background: rgba(255, 92, 92, 0.04);
-    border: 1px solid rgba(255, 92, 92, 0.14);
-    border-radius: 12px;
-  }
-  .dp-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-  .dp-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: #ff8c8c;
-    text-transform: uppercase;
-  }
-  .dp-value {
-    font-size: 13px;
-    font-weight: 700;
-    color: #ff8c8c;
-    font-variant-numeric: tabular-nums;
-    min-width: 40px;
-    text-align: right;
-  }
-  .damage-panel input[type=range] {
-    width: 100%;
-    accent-color: #ff5c5c;
-    margin: 2px 0;
-    cursor: pointer;
-  }
-  .dp-hint {
-    font-size: 12px;
-    color: var(--ink-low);
-    margin: 4px 0 0;
-    line-height: 1.4;
-  }
   button {
     font-family: inherit;
     font-size: 14px;
@@ -300,14 +260,6 @@
     </div>
   </nav>
 
-  <div class="damage-panel">
-    <div class="dp-header">
-      <span class="dp-title">Autoimmune Attack</span>
-      <span class="dp-value" id="damageValue">0%</span>
-    </div>
-    <input type="range" id="damageSlider" min="0" max="100" value="0" step="1" />
-    <p class="dp-hint">Scrub right to simulate the immune system attacking the neuron's machinery (pumps and channels). Pathologies like multiple sclerosis, myasthenia gravis, and channelopathies work this way.</p>
-  </div>
 </main>
 
 <script>
@@ -481,7 +433,7 @@ let gates = { na: 0, k: 0 };
 let gateTargets = { na: 0, k: 0 };
 let sceneLocal = {};
 let sceneFadeT = 0;
-let damage = 0; // autoimmune damage 0..1
+const damage = 0; // kept for legacy render paths; disease simulations live in the demyelination app
 let antibodies = []; // floating antibody visuals
 
 function clearField() {
@@ -1891,15 +1843,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" && currentSceneIdx > 0) setScene(currentSceneIdx - 1);
 });
 
-// Damage slider
-const damageSlider = document.getElementById("damageSlider");
-const damageValueEl = document.getElementById("damageValue");
-damageSlider.addEventListener("input", () => {
-  damage = damageSlider.value / 100;
-  damageValueEl.textContent = damageSlider.value + "%";
-});
-
-// Damage helpers — draw X mark / cracks on a point
+// Damage helpers — draw X mark / cracks on a point (currently unused — damage === 0)
 function drawDamageMark(ctx, x, y, size, alpha) {
   ctx.save();
   ctx.strokeStyle = `rgba(255, 92, 92, ${alpha})`;
