@@ -1612,8 +1612,13 @@ const scenePropagation = {
     for (let i = 0; i < 14; i++) {
       ions.push(new Ion('Na', 200 + i * 50, MEM_BOT + 80 + Math.random() * 160, 'inside'));
     }
-    for (let i = 0; i < 8; i++) {
+    // Background Na+ pool outside (left side, thinner)
+    for (let i = 0; i < 6; i++) {
       ions.push(new Ion('Na', 80 + i * 110, MEM_TOP - 80 - Math.random() * 120, 'outside'));
+    }
+    // Dense pool of Na+ clustered right above the NEXT patch — ready to rush in when triggered
+    for (let i = 0; i < 18; i++) {
+      ions.push(new Ion('Na', K_CHANNEL_X - 140 + Math.random() * 280, MEM_TOP - 70 - Math.random() * 150, 'outside'));
     }
     for (let i = 0; i < 6; i++) {
       ions.push(new Ion('P', 150 + i * 150, MEM_BOT + 200 + Math.random() * 130, 'inside'));
@@ -1629,6 +1634,7 @@ const scenePropagation = {
       flash: 0,
       closingAt: 0,
       nextPatchInactivated: false,
+      burstFired: false,
     };
   },
   update(dt) {
@@ -1654,7 +1660,7 @@ const scenePropagation = {
     // Post-trigger timing: open fast, hold briefly, then close + inactivate
     if (sceneLocal.triggered) {
       const sinceTrigger = animT - sceneLocal.triggerAt;
-      if (sinceTrigger > 2200 && !sceneLocal.closingAt) {
+      if (sinceTrigger > 2400 && !sceneLocal.closingAt) {
         sceneLocal.closingAt = animT;
         gateTargets.na = 0;
       }
@@ -1669,14 +1675,25 @@ const scenePropagation = {
     // Flash decays
     sceneLocal.flash = Math.max(0, sceneLocal.flash - dt / 900);
 
-    // Ion transit through the next-patch gate while it's open
+    // Burst: once gate is meaningfully open after trigger, fire a cluster of Na+ in at once
+    if (sceneLocal.triggered && !sceneLocal.burstFired && gates.na > 0.45) {
+      sceneLocal.burstFired = true;
+      const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 260);
+      // Fire up to 8 ions with slight delays via per-ion transit speeds
+      cands.slice(0, 8).forEach((ion, idx) => {
+        const speed = 0.0022 + Math.random() * 0.0008 - idx * 0.00005;
+        ion.setTransit(channelPath(K_CHANNEL_X, 'outside', 'inside'), speed, 'inside');
+      });
+    }
+
+    // Continuous trickle during the open window (shorter interval for a real rush)
     sceneLocal.rushed += dt;
-    if (sceneLocal.rushed > 130 && gates.na > 0.4 && !sceneLocal.nextPatchInactivated) {
+    if (sceneLocal.rushed > 60 && gates.na > 0.4 && !sceneLocal.nextPatchInactivated) {
       sceneLocal.rushed = 0;
       const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 260);
       if (cands.length) {
         const ion = cands[Math.floor(Math.random() * cands.length)];
-        ion.setTransit(channelPath(K_CHANNEL_X, 'outside', 'inside'), 0.002, 'inside');
+        ion.setTransit(channelPath(K_CHANNEL_X, 'outside', 'inside'), 0.002 + Math.random() * 0.001, 'inside');
       }
     }
     ions.forEach(i => i.update(dt));
