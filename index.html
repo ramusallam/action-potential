@@ -185,6 +185,46 @@
     justify-content: space-between;
     gap: 12px;
   }
+  .damage-panel {
+    margin-top: 18px;
+    padding: 12px 16px 14px;
+    background: rgba(255, 92, 92, 0.04);
+    border: 1px solid rgba(255, 92, 92, 0.14);
+    border-radius: 12px;
+  }
+  .dp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .dp-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #ff8c8c;
+    text-transform: uppercase;
+  }
+  .dp-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ff8c8c;
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: right;
+  }
+  .damage-panel input[type=range] {
+    width: 100%;
+    accent-color: #ff5c5c;
+    margin: 2px 0;
+    cursor: pointer;
+  }
+  .dp-hint {
+    font-size: 12px;
+    color: var(--ink-low);
+    margin: 4px 0 0;
+    line-height: 1.4;
+  }
   button {
     font-family: inherit;
     font-size: 14px;
@@ -259,6 +299,15 @@
       <button id="nextBtn" class="primary">Next →</button>
     </div>
   </nav>
+
+  <div class="damage-panel">
+    <div class="dp-header">
+      <span class="dp-title">Autoimmune Attack</span>
+      <span class="dp-value" id="damageValue">0%</span>
+    </div>
+    <input type="range" id="damageSlider" min="0" max="100" value="0" step="1" />
+    <p class="dp-hint">Scrub right to simulate the immune system attacking the neuron's machinery (pumps and channels). Pathologies like multiple sclerosis, myasthenia gravis, and channelopathies work this way.</p>
+  </div>
 </main>
 
 <script>
@@ -432,6 +481,8 @@ let gates = { na: 0, k: 0 };
 let gateTargets = { na: 0, k: 0 };
 let sceneLocal = {};
 let sceneFadeT = 0;
+let damage = 0; // autoimmune damage 0..1
+let antibodies = []; // floating antibody visuals
 
 function clearField() {
   ions = [];
@@ -525,6 +576,8 @@ function drawChargeMarks(ctx, outsideSign, insideSign) {
 function drawPump(ctx, t, opts = {}) {
   const cx = PUMP_X, cy = MID;
   ctx.save();
+  // damage dims the pump
+  if (damage > 0) ctx.globalAlpha = Math.max(0.15, 1 - damage * 0.75);
   // capsule body
   const bw = 70, bh = 110;
   const grad = ctx.createLinearGradient(cx - bw, cy - bh, cx + bw, cy + bh);
@@ -574,6 +627,10 @@ function drawPump(ctx, t, opts = {}) {
     ctx.fillText('Na / K pump', cx, cy + bh + 24);
   }
   ctx.restore();
+  // damage overlay (outside the alpha-dimmed save block so it stays strong)
+  if (damage > 0.15) {
+    drawDamageMark(ctx, cx, cy, 40, Math.min(1, (damage - 0.1) * 1.4));
+  }
 }
 
 // rounded rect
@@ -617,6 +674,7 @@ function pumpOutToIn(p) {
 // voltage-gated channel: two curved lips
 function drawChannel(ctx, x, openness, ionColor, label, status) {
   ctx.save();
+  if (damage > 0) ctx.globalAlpha = Math.max(0.2, 1 - damage * 0.7);
   // pore base
   const baseG = ctx.createLinearGradient(x - CHANNEL_HALF_W, 0, x + CHANNEL_HALF_W, 0);
   baseG.addColorStop(0, 'rgba(20, 30, 55, 0.9)');
@@ -667,6 +725,10 @@ function drawChannel(ctx, x, openness, ionColor, label, status) {
     ctx.fillText(status || (openness > 0.5 ? 'OPEN' : 'CLOSED'), x, MEM_BOT + 100);
   }
   ctx.restore();
+  // damage X mark (not alpha-dimmed)
+  if (damage > 0.2) {
+    drawDamageMark(ctx, x, MID, 28, Math.min(1, (damage - 0.15) * 1.4));
+  }
 }
 
 function channelPath(x, fromRegion, toRegion) {
@@ -695,17 +757,19 @@ const sceneThePump = {
   },
   update(dt) {
     sceneLocal.spawn += dt;
-    if (sceneLocal.spawn > 900) {
+    if (sceneLocal.spawn > 900 + damage * 3000) {
       sceneLocal.spawn = 0;
-      const i = sceneLocal.cycle++ % 5;
-      if (i < 3) {
-        const ion = new Ion('Na', PUMP_X - 30, MID + 85, 'inside');
-        ion.setTransit(pumpInToOut, 0.0016, 'outside');
-        ions.push(ion);
-      } else {
-        const ion = new Ion('K', PUMP_X + 30, MID - 85, 'outside');
-        ion.setTransit(pumpOutToIn, 0.0016, 'inside');
-        ions.push(ion);
+      if (Math.random() > damage * 0.85) {
+        const i = sceneLocal.cycle++ % 5;
+        if (i < 3) {
+          const ion = new Ion('Na', PUMP_X - 30, MID + 85, 'inside');
+          ion.setTransit(pumpInToOut, 0.0016, 'outside');
+          ions.push(ion);
+        } else {
+          const ion = new Ion('K', PUMP_X + 30, MID - 85, 'outside');
+          ion.setTransit(pumpOutToIn, 0.0016, 'inside');
+          ions.push(ion);
+        }
       }
     }
     ions.forEach(i => i.update(dt));
@@ -1264,10 +1328,12 @@ const sceneDepolarize = {
     sceneLocal.rushed += dt;
     if (sceneLocal.rushed > 110 && gates.na > 0.5 && animT < sceneLocal.closeAt) {
       sceneLocal.rushed = 0;
-      const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - NA_CHANNEL_X) < 260);
-      if (cands.length) {
-        const ion = cands[Math.floor(Math.random() * cands.length)];
-        ion.setTransit(channelPath(NA_CHANNEL_X, 'outside', 'inside'), 0.002, 'inside');
+      if (Math.random() > damage * 0.9) {
+        const cands = ions.filter(i => i.type === 'Na' && i.region === 'outside' && i.state === 'free' && Math.abs(i.x - NA_CHANNEL_X) < 260);
+        if (cands.length) {
+          const ion = cands[Math.floor(Math.random() * cands.length)];
+          ion.setTransit(channelPath(NA_CHANNEL_X, 'outside', 'inside'), 0.002, 'inside');
+        }
       }
     }
     if (animT > sceneLocal.closeAt) gateTargets.na = 0;
@@ -1317,10 +1383,12 @@ const sceneRepolarize = {
     sceneLocal.rushed += dt;
     if (sceneLocal.rushed > 130 && gates.k > 0.4) {
       sceneLocal.rushed = 0;
-      const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 250);
-      if (cands.length) {
-        const ion = cands[Math.floor(Math.random() * cands.length)];
-        ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.002, 'outside');
+      if (Math.random() > damage * 0.9) {
+        const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 250);
+        if (cands.length) {
+          const ion = cands[Math.floor(Math.random() * cands.length)];
+          ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.002, 'outside');
+        }
       }
     }
     ions.forEach(i => i.update(dt));
@@ -1356,10 +1424,12 @@ const sceneRefractory = {
     if (animT > sceneLocal.closeAt) gateTargets.k = 0;
     if (sceneLocal.rushed > 180 && gates.k > 0.3) {
       sceneLocal.rushed = 0;
-      const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 280);
-      if (cands.length) {
-        const ion = cands[Math.floor(Math.random() * cands.length)];
-        ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.0018, 'outside');
+      if (Math.random() > damage * 0.9) {
+        const cands = ions.filter(i => i.type === 'K' && i.region === 'inside' && i.state === 'free' && Math.abs(i.x - K_CHANNEL_X) < 280);
+        if (cands.length) {
+          const ion = cands[Math.floor(Math.random() * cands.length)];
+          ion.setTransit(channelPath(K_CHANNEL_X, 'inside', 'outside'), 0.0018, 'outside');
+        }
       }
     }
     ions.forEach(i => i.update(dt));
@@ -1821,6 +1891,57 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" && currentSceneIdx > 0) setScene(currentSceneIdx - 1);
 });
 
+// Damage slider
+const damageSlider = document.getElementById("damageSlider");
+const damageValueEl = document.getElementById("damageValue");
+damageSlider.addEventListener("input", () => {
+  damage = damageSlider.value / 100;
+  damageValueEl.textContent = damageSlider.value + "%";
+});
+
+// Damage helpers — draw X mark / cracks on a point
+function drawDamageMark(ctx, x, y, size, alpha) {
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 92, 92, ${alpha})`;
+  ctx.lineWidth = Math.max(2, size * 0.12);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - size, y - size);
+  ctx.lineTo(x + size, y + size);
+  ctx.moveTo(x - size, y + size);
+  ctx.lineTo(x + size, y - size);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAntibodies(ctx, t) {
+  if (damage < 0.05) return;
+  const count = Math.floor(damage * 14);
+  for (let i = 0; i < count; i++) {
+    const seed = i * 97.13;
+    const x = ((Math.sin(seed) * 0.5 + 0.5) * W + (t / 40 + i * 60)) % W;
+    const yRegion = (i % 2 === 0) ? MEM_TOP - 40 - (i * 13 % 80) : MEM_BOT + 40 + (i * 17 % 80);
+    const yBob = Math.sin(t / 500 + i) * 6;
+    const y = yRegion + yBob;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(t / 700 + i) * 0.3);
+    ctx.strokeStyle = `rgba(255, 92, 92, ${0.45 + damage * 0.35})`;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    // Y shape — antibody
+    ctx.beginPath();
+    ctx.moveTo(0, 8);
+    ctx.lineTo(0, -2);
+    ctx.moveTo(0, -2);
+    ctx.lineTo(-6, -10);
+    ctx.moveTo(0, -2);
+    ctx.lineTo(6, -10);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 // =====================================================
 //  Main loop
 // =====================================================
@@ -1840,6 +1961,8 @@ function tick(ts) {
   ctx.globalAlpha = sceneFadeT;
   s.draw(ctx, animT);
   ctx.restore();
+  // antibodies float above everything when damage > 0
+  drawAntibodies(ctx, animT);
   requestAnimationFrame(tick);
 }
 
