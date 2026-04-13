@@ -862,6 +862,97 @@ function drawChannel(ctx, x, openness, ionColor, label, opts) {
   ctx.restore();
 }
 
+// Compact horizontal voltage meter used by the repolarize+refractory scene.
+// Has a dashed Resting line at -70 so students can clearly see the dip.
+function drawLocalVoltageMeter(ctx, cx, cy, v) {
+  const w = 260;
+  const x0 = cx - w / 2;
+  const x1 = cx + w / 2;
+  const vMin = -95, vMax = 50;
+  const toX = mv => x0 + ((mv - vMin) / (vMax - vMin)) * w;
+
+  ctx.save();
+
+  // axis line
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, cy);
+  ctx.lineTo(x1, cy);
+  ctx.stroke();
+
+  // dashed vertical reference line at resting -70 so the dip is unmistakable
+  const rx = toX(-70);
+  ctx.strokeStyle = 'rgba(110, 231, 229, 0.55)';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(rx, cy - 18);
+  ctx.lineTo(rx, cy + 18);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(110, 231, 229, 0.85)';
+  ctx.font = '600 10px -apple-system, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('rest −70', rx, cy + 20);
+
+  // edge labels
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '500 10px -apple-system, system-ui';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText('−90', x0 + 2, cy + 20);
+  ctx.textAlign = 'right';
+  ctx.fillText('+40', x1 - 2, cy + 20);
+
+  // tick marks
+  [-90, -70, 0, 40].forEach(mv => {
+    const tx = toX(mv);
+    ctx.strokeStyle = mv === -70 ? 'rgba(110, 231, 229, 0.7)' : 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = mv === -70 ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(tx, cy - 3);
+    ctx.lineTo(tx, cy + 3);
+    ctx.stroke();
+  });
+
+  // current voltage marker
+  const vx = toX(v);
+  const isHyper = v < -71;
+  const fill = isHyper ? '#b084ff' : (v > -40 ? '#ff7a6b' : '#5cc9ff');
+  ctx.fillStyle = fill;
+  ctx.shadowColor = fill;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(vx, cy, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // inner white core
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.arc(vx, cy, 2.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // voltage numeric above the dot
+  ctx.fillStyle = fill;
+  ctx.font = '700 13px -apple-system, system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(Math.round(v) + ' mV', vx, cy - 10);
+
+  // HYPERPOLARIZED callout when below resting
+  if (isHyper) {
+    ctx.fillStyle = 'rgba(176, 132, 255, 0.95)';
+    ctx.font = '700 10px -apple-system, system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('HYPERPOLARIZED ↓', vx, cy - 26);
+  }
+
+  ctx.restore();
+}
+
 function channelPath(x, fromRegion, toRegion) {
   return (p) => {
     let y;
@@ -1514,7 +1605,7 @@ const sceneRepolarize = {
     gates = { na: 0, k: 0 };
     gateTargets = { na: 0, k: 1 };
     channelState = { naInactivated: true, kState: 'opening', kLocked: false };
-    sceneLocal = { rushed: 0, phase: 'opening', startCloseAt: 2800, lockAt: 6500, naResetAt: 7500 };
+    sceneLocal = { rushed: 0, phase: 'opening', startCloseAt: 2800, lockAt: 6500, naResetAt: 7500, localV: 40 };
   },
   update(dt) {
     // K+ gate progresses through OPENING → SLOW CLOSE → LOCKED
@@ -1537,6 +1628,20 @@ const sceneRepolarize = {
       if (animT > sceneLocal.naResetAt) channelState.naInactivated = false;
     }
     gates.na += (gateTargets.na - gates.na) * 0.1;
+
+    // Voltage timeline: peak → resting → hyperpolarized dip → recovery
+    let vTarget;
+    if (animT < sceneLocal.startCloseAt) {
+      const p = animT / sceneLocal.startCloseAt;
+      vTarget = 40 + (-70 - 40) * p; // opening: +40 → -70
+    } else if (animT < sceneLocal.lockAt) {
+      const p = (animT - sceneLocal.startCloseAt) / (sceneLocal.lockAt - sceneLocal.startCloseAt);
+      vTarget = -70 + (-82 - (-70)) * p; // closing: dip to -82 (hyperpolarization)
+    } else {
+      const p = Math.min(1, (animT - sceneLocal.lockAt) / 2500);
+      vTarget = -82 + (-70 - (-82)) * p; // locked: recover back to -70
+    }
+    sceneLocal.localV += (vTarget - sceneLocal.localV) * 0.12;
 
     // K+ ion transit while gates are open (faster during open, slower during slow-close)
     sceneLocal.rushed += dt;
@@ -1567,6 +1672,9 @@ const sceneRepolarize = {
       kOpts.slowClose = true;
     }
     drawChannel(ctx, K_CHANNEL_X, gates.k, C_K, 'K⁺ gated channel', kOpts);
+
+    // Local voltage meter BELOW the K+ channel — shows the dip into hyperpolarization
+    drawLocalVoltageMeter(ctx, K_CHANNEL_X, MEM_BOT + 138, sceneLocal.localV);
 
     ions.forEach(i => i.draw(ctx));
     drawSideLabels(ctx);
