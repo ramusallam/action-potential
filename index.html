@@ -1190,15 +1190,52 @@ const sceneNeuron = {
     ctx.fillText('we zoom in on this patch →', hx, hy - 75);
     ctx.restore();
 
-    // labels
+    // anatomy labels with leader lines pointing to the actual structures
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.font = '600 16px -apple-system, system-ui';
+    ctx.font = '700 17px -apple-system, system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText('dendrites', 90, MID - 260);
-    ctx.fillText('cell body', soma.x, soma.y + 160);
-    ctx.fillText('axon', 700, soma.y - 40);
-    ctx.fillText('terminals', W - 160, soma.y + 200);
+    ctx.textBaseline = 'middle';
+
+    const drawAnatomyLabel = (text, lx, ly, tx, ty) => {
+      // leader line from label anchor to target on the structure
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // small dot at the target
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.9)';
+      ctx.beginPath();
+      ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // label pill
+      const metrics = ctx.measureText(text);
+      const padX = 10, padY = 6;
+      const bw = metrics.width + padX * 2;
+      const bh = 24 + padY * 2 - 16;
+      ctx.fillStyle = 'rgba(16, 24, 48, 0.85)';
+      ctx.strokeStyle = 'rgba(255, 209, 102, 0.6)';
+      ctx.lineWidth = 1;
+      const bx = lx - bw / 2, by = ly - bh / 2;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.fillText(text, lx, ly);
+    };
+
+    // dendrites: label up-left, point to one of the dendrite branches
+    drawAnatomyLabel('dendrites', 150, soma.y - 210, soma.x - 150, soma.y - 110);
+    // cell body: label below, point up into the soma
+    drawAnatomyLabel('cell body (soma)', soma.x, soma.y + 170, soma.x, soma.y + 70);
+    // axon: label above, point down to the axon itself
+    drawAnatomyLabel('axon', 740, soma.y - 70, 740, soma.y - 8);
+    // terminals: label to the right-above of the bouton spray, point into a bouton
+    drawAnatomyLabel('axon terminals', W - 120, soma.y - 130, W - 150, soma.y - 45);
     ctx.restore();
   }
 };
@@ -1583,7 +1620,8 @@ const sceneDepolarize = {
 const sceneRepolarize = {
   phase: 'Step 10: Repolarization & Refractory',
   phaseColor: '#5cc9ff',
-  voltage: -70,
+  voltage: 40,
+  dynamicVoltage: true,
   graphIdx: 4,
   notes: `The Na⁺ gates are still <strong>INACTIVATED (locked)</strong>. Meanwhile the <strong>voltage-gated K⁺ gates are opening</strong>, but K⁺ gates are <strong>SLOW</strong>. Once open, K⁺ rushes <strong>OUT</strong>, pulling positive charge with it, and the voltage falls. This is <strong>repolarization</strong>.
     <br><br>Here is the part that matters: <strong>K⁺ gates are also SLOW TO CLOSE.</strong> Because closing is slow, K⁺ keeps leaking out for a while after it should have stopped. Too much positive charge leaves, so the voltage dips <strong>below resting (≈ −80 mV)</strong>. The patch cannot fire again yet. This dip is the <strong>refractory period</strong>, and it is the same slow-K⁺-close mechanism, not a separate event.
@@ -1711,7 +1749,7 @@ const sceneRepolarize = {
 const scenePropagation = {
   phase: 'Step 11: Propagation',
   phaseColor: '#ff7a6b',
-  voltage: 30,
+  voltage: -70,
   graphIdx: 3,
   notes: "The Na⁺ that rushed in is <strong>stuck</strong>. It cannot cross back (Na⁺ gates on this patch are locked) and it cannot leak through the membrane. Because it is all positive, it <strong>repels itself sideways</strong> toward the next patch. Watch it drift right. When the wave of Na⁺ reaches the <strong>next patch's gate</strong>, the voltage there crosses <strong>threshold</strong> and that gate <strong>TRIGGERS OPEN</strong>. Na⁺ rushes in. The process <strong>repeats</strong> one patch down. That is how the action potential travels.",
   setup() {
@@ -2386,6 +2424,11 @@ function tick(ts) {
   sceneFadeT = Math.min(1, sceneFadeT + dt / 600);
   const s = scenes[currentSceneIdx];
   if (s.update) s.update(dt);
+  // Live voltage readout for scenes with an animated voltage (e.g., Step 10)
+  if (s.dynamicVoltage && sceneLocal && typeof sceneLocal.localV === 'number') {
+    const v = Math.round(sceneLocal.localV);
+    voltageEl.textContent = (v > 0 ? '+' : '') + v + ' mV';
+  }
   // clear with subtle vignette
   ctx.save();
   ctx.fillStyle = '#05070f';
