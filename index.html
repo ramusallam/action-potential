@@ -1750,6 +1750,7 @@ const scenePropagation = {
   phase: 'Step 11: Propagation',
   phaseColor: '#ff7a6b',
   voltage: -70,
+  dynamicVoltage: true,
   graphIdx: 1,
   notes: "The Na⁺ that rushed in is <strong>stuck</strong>. It cannot cross back (Na⁺ gates on this patch are locked) and it cannot leak through the membrane. Because it is all positive, it <strong>repels itself sideways</strong> toward the next patch. Watch it drift right. When the wave of Na⁺ reaches the <strong>next patch's gate</strong>, the voltage there crosses <strong>threshold</strong> and that gate <strong>TRIGGERS OPEN</strong>. Na⁺ rushes in. The process <strong>repeats</strong> one patch down. That is how the action potential travels.",
   setup() {
@@ -1781,6 +1782,8 @@ const scenePropagation = {
       closingAt: 0,
       nextPatchInactivated: false,
       burstFired: false,
+      localV: -70, // next-patch voltage: resting until Na+ rushes in
+      graphSpiked: false, // whether we've re-rendered the mini graph to show the spike
     };
   },
   update(dt) {
@@ -1817,6 +1820,18 @@ const scenePropagation = {
 
     // Fast gate dynamics (Na+ is a fast channel)
     gates.na += (gateTargets.na - gates.na) * 0.22;
+
+    // Next-patch voltage: sits at -70 until Na+ rushes in, then spikes to +30
+    const vTargetProp = sceneLocal.triggered ? 30 : -70;
+    sceneLocal.localV += (vTargetProp - sceneLocal.localV) * 0.08;
+
+    // Once the spike is fully underway, re-render the mini graph to show the
+    // resting → threshold → depolarize path. This visually closes the loop:
+    // "it all happens again" on the next patch.
+    if (sceneLocal.triggered && !sceneLocal.graphSpiked && sceneLocal.localV > -50) {
+      sceneLocal.graphSpiked = true;
+      renderMinigraph(3); // advance to depolarize marker
+    }
 
     // Flash decays
     sceneLocal.flash = Math.max(0, sceneLocal.flash - dt / 900);
