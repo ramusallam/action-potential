@@ -6,30 +6,29 @@
 <title>Action Potential</title>
 <style>
   :root {
-    --bg-0: #05070f;
-    --bg-1: #0b1022;
-    --ink-hi: #f2f5fb;
-    --ink-mid: #9fb0ca;
-    --ink-low: #58688a;
+    --bg-0: #0a0a0a;
+    --bg-1: #141414;
+    --bg-2: #1e1e1e;
+    --ink-hi: #f5f5f5;
+    --ink-mid: #a0a0a0;
+    --ink-low: #6b7280;
     --na: #ff7a6b;
     --k: #5cc9ff;
     --protein: #b084ff;
     --atp: #ffd166;
     --amber: #d4a554;
-    --accent: #6ee7e5;
-    --panel: rgba(255,255,255,0.02);
-    --panel-border: rgba(255,255,255,0.06);
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --panel: #141414;
+    --panel-border: rgba(255,255,255,0.10);
     --note-bg: #fdf1c6;
     --note-ink: #2a1e08;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-    background:
-      radial-gradient(ellipse 80% 60% at 50% 0%, #0f1630 0%, transparent 70%),
-      linear-gradient(180deg, #05070f 0%, #030510 100%);
-    background-attachment: fixed;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: var(--bg-0);
     color: var(--ink-hi);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
@@ -90,7 +89,7 @@
     position: relative;
     background: var(--panel);
     border: 1px solid var(--panel-border);
-    border-radius: 22px;
+    border-radius: 12px;
     overflow: hidden;
     box-shadow:
       0 30px 80px rgba(0,0,0,0.5),
@@ -267,15 +266,32 @@
     transition: width 300ms ease;
   }
   .pb-text.complete { color: #0f5b3f; }
-  .sketch-prompt {
-    margin-top: 6px;
-    padding-top: 8px;
-    border-top: 1px dashed rgba(122, 86, 0, 0.25);
-    font-size: 13px;
-    font-style: italic;
-    color: #8a6100;
+  .notebook-prompt {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, rgba(255, 209, 102, 0.15), rgba(244, 114, 182, 0.12));
+    border: 1.5px solid rgba(255, 209, 102, 0.45);
+    border-left: 5px solid #ffd166;
+    border-radius: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #f3d589;
   }
-  .sketch-prompt .pen { font-style: normal; margin-right: 4px; }
+  .notebook-prompt .np-tag {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    padding: 4px 9px;
+    background: #ffd166;
+    color: #2a1e08;
+    border-radius: 5px;
+    margin-top: 1px;
+  }
+  .notebook-prompt strong { color: #ffd166; font-weight: 700; }
   nav {
     margin-top: 14px;
     display: flex;
@@ -302,7 +318,7 @@
   button:active:not(:disabled) { transform: translateY(1px); }
   button:disabled { opacity: 0.3; cursor: not-allowed; }
   button.primary {
-    background: linear-gradient(180deg, #6ee7e5 0%, #3dbfc0 100%);
+    background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
     color: #03252a;
     border-color: rgba(110, 231, 229, 0.4);
     box-shadow: 0 6px 20px rgba(110, 231, 229, 0.25);
@@ -345,7 +361,10 @@
     <div class="notes-card">
       <div class="step-heading" id="stepHeading">Step 1: The Neuron</div>
       <p id="notes"></p>
-      <div class="sketch-prompt" id="sketchPrompt"><span class="pen">✎</span>Now sketch what you see above in your notes. Use color where it helps.</div>
+    </div>
+    <div class="notebook-prompt" id="notebookPrompt">
+      <div class="np-tag">✎ NOTES</div>
+      <div id="notebookText"></div>
     </div>
   </div>
 
@@ -385,7 +404,7 @@ const C_PROT = '#b084ff';
 const C_PROT_GLOW = 'rgba(176, 132, 255,';
 const C_ATP = '#ffd166';
 const C_AMBER = '#d4a554';
-const C_ACCENT = '#6ee7e5';
+const C_ACCENT = '#6366f1';
 
 // =====================================================
 //  Ion — with motion trail
@@ -973,6 +992,7 @@ const sceneThePump = {
   voltage: null,
   graphIdx: null,
   notes: "The <strong>sodium-potassium pump</strong> uses <strong>ATP</strong> (the energy molecule from biology with Sierra or Meredith) to push <strong>3 Na⁺ OUT</strong> and pull <strong>2 K⁺ IN</strong>. That's how Na⁺ ends up outside and K⁺ ends up inside.",
+  notebook: "Draw the sodium-potassium pump with the spinning ATP rotor. Label: <strong>3 Na⁺ OUT, 2 K⁺ IN</strong>. ATP = energy.",
   setup() {
     clearField();
     sceneLocal = { spawn: 0, cycle: 0 };
@@ -1050,6 +1070,7 @@ const sceneNeuron = {
   voltage: null,
   graphIdx: null,
   notes: "Meet the neuron. It has <strong>dendrites</strong> (receive signals), a <strong>cell body</strong> (process), an <strong>axon</strong> (send the signal), and <strong>terminals</strong> (pass it to the next cell). Today we will understand how a signal travels down this cell.",
+  notebook: "Sketch the neuron and label every part: <strong>dendrites, cell body (soma), axon, axon terminals</strong>. Box the axon. That is where the action potential will travel.",
   setup() {
     clearField();
     const rng = seededRng(7);
@@ -1069,7 +1090,7 @@ const sceneNeuron = {
   },
   update(dt) { sceneLocal.pulse += dt / 500; },
   draw(ctx, t) {
-    ctx.fillStyle = '#05070f';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
     const { soma, trees } = sceneLocal;
 
@@ -1247,11 +1268,12 @@ const scenePolarized = {
   voltage: -70,
   graphIdx: null,
   notes: "The <strong>outside</strong> of the neuron is <strong>POSITIVE (+)</strong>. The <strong>inside</strong> is <strong>NEGATIVE (−)</strong>. This is called <strong>POLARIZED</strong>. A resting neuron is polarized all along the axon.",
+  notebook: "Draw a section of axon. Label <strong>OUTSIDE = +</strong> and <strong>INSIDE = −</strong>. Write the word <strong>POLARIZED</strong> across it.",
   setup() { clearField(); sceneLocal = { zoomT: 0 }; },
   update(dt) { sceneLocal.zoomT = Math.min(1, sceneLocal.zoomT + dt / 600); },
   draw(ctx, t) {
     // background stays fixed (not zoomed)
-    ctx.fillStyle = '#05070f';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
     // zoom-in transition: content grows into place
     const z = sceneLocal.zoomT;
@@ -1306,13 +1328,14 @@ const sceneWave = {
   voltage: null,
   graphIdx: null,
   notes: "An action potential is a <strong>wave of charge flip</strong> that travels down the axon in <strong>small local sections</strong>. Only a tiny patch flips at a time. The rest of the neuron stays polarized.",
+  notebook: "Show one small patch of axon with the charges flipped (positive INSIDE, negative OUTSIDE). Label that patch as <strong>the action potential</strong>. Note that only a tiny patch flips at a time.",
   setup() { clearField(); sceneLocal = { wavePos: -150, speed: 420 }; },
   update(dt) {
     sceneLocal.wavePos += sceneLocal.speed * dt / 1000;
     if (sceneLocal.wavePos > W + 200) sceneLocal.wavePos = -150;
   },
   draw(ctx, t) {
-    ctx.fillStyle = '#05070f';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
     const axonTop = MID - 70;
     const axonBot = MID + 70;
@@ -1380,6 +1403,7 @@ const scenePuzzle = {
   voltage: null,
   graphIdx: null,
   notes: "Two puzzles to solve. <strong>(1)</strong> Na⁺ sits OUTSIDE. K⁺ sits INSIDE. How did they get separated? <strong>(2)</strong> K⁺ is a positive ion, yet the inside is still NEGATIVE. How is that possible?",
+  notebook: "Write both puzzles in your notes. (1) How did Na⁺ end up OUTSIDE and K⁺ INSIDE? (2) K⁺ is positive, so why is the inside still negative? Leave space for the answers.",
   setup() {
     clearField();
     for (let i = 0; i < 12; i++) {
@@ -1414,6 +1438,7 @@ const sceneProteins = {
   voltage: -70,
   graphIdx: 0,
   notes: "Inside the cell sit large <strong>negatively charged proteins (P⁻)</strong>. They are <strong>locked inside</strong> and cannot cross the membrane. Their negative charge outweighs the K⁺, so the inside stays <strong>NEGATIVE overall</strong>.",
+  notebook: "Add the locked <strong>negatively-charged proteins (P⁻)</strong> inside the cell. Their negative charge is what keeps the inside negative overall, even with K⁺ in there.",
   setup() {
     clearField();
     for (let i = 0; i < 12; i++) {
@@ -1476,10 +1501,11 @@ const sceneWhyNegative = {
 // 4. Resting potential
 const sceneResting = {
   phase: 'Step 7: Resting Potential',
-  phaseColor: '#6ee7e5',
+  phaseColor: '#6366f1',
   voltage: -70,
   graphIdx: 1,
   notes: "Resting potential ≈ <strong>−70 mV</strong>. Both <strong>voltage-gated</strong> channels (Na⁺ and K⁺) are <strong>CLOSED</strong>. They wait for a voltage change. Pump still running. The neuron is primed and ready.",
+  notebook: "Sketch the resting axon. Label both gates as <strong>CLOSED</strong>. Write <strong>−70 mV</strong> and <strong>POLARIZED</strong>. Primed and ready to fire.",
   setup() {
     clearField();
     for (let i = 0; i < 14; i++) {
@@ -1518,6 +1544,7 @@ const sceneThreshold = {
   voltage: -55,
   graphIdx: 2,
   notes: "A <strong>signal</strong> = positive charge arriving from a neighboring patch that just fired. It trickles in and raises the voltage here. If voltage reaches <strong>threshold (≈ −55 mV)</strong>, the Na⁺ gates open and a full AP fires. Below threshold → nothing. <strong>ALL-OR-NOTHING</strong>.",
+  notebook: "Mark <strong>threshold (−55 mV)</strong> on a quick voltage line. Write <strong>ALL-OR-NOTHING</strong>: hit threshold, full AP fires; below it, nothing.",
   setup() {
     sceneResting.setup();
     sceneLocal = { pulse: 0 };
@@ -1577,6 +1604,7 @@ const sceneDepolarize = {
   voltage: 30,
   graphIdx: 3,
   notes: "The voltage change pops the <strong>voltage-gated Na⁺ gates OPEN</strong>. Na⁺ rushes <strong>IN</strong>. The patch flips from negative to <strong>positive (≈ +30 mV)</strong>. <strong>DEPOLARIZATION</strong>. Then the Na⁺ gates <strong>SNAP SHUT fast</strong> and become <strong>INACTIVATED</strong>. They cannot reopen until the membrane resets. That locking is why the signal only travels forward.",
+  notebook: "Draw the <strong>Na⁺ gates open</strong> with Na⁺ rushing IN. Voltage flips to <strong>+30 mV</strong>. Then label gates as <strong>INACTIVATED (locked)</strong>. That lock is why the signal only goes one way.",
   setup() {
     sceneResting.setup();
     gateTargets = { na: 1, k: 0 };
@@ -1626,6 +1654,7 @@ const sceneRepolarize = {
   notes: `The Na⁺ gates are still <strong>INACTIVATED (locked)</strong>. Meanwhile the <strong>voltage-gated K⁺ gates are opening</strong>, but K⁺ gates are <strong>SLOW</strong>. Once open, K⁺ rushes <strong>OUT</strong>, pulling positive charge with it, and the voltage falls. This is <strong>repolarization</strong>.
     <br><br>Here is the part that matters: <strong>K⁺ gates are also SLOW TO CLOSE.</strong> Because closing is slow, K⁺ keeps leaking out for a while after it should have stopped. Too much positive charge leaves, so the voltage dips <strong>below resting (≈ −80 mV)</strong>. The patch cannot fire again yet. This dip is the <strong>refractory period</strong>, and it is the same slow-K⁺-close mechanism, not a separate event.
     <br><br>Eventually the K⁺ gates finish closing and <strong>lock shut</strong>. Small always-open holes called <strong>leak channels</strong> trickle ions back so the resting potential settles at −70 mV. Na⁺ finally resets. The patch is ready to fire again.`,
+  notebook: "Draw <strong>K⁺ gates opening (slow)</strong> with K⁺ rushing OUT. Label: <strong>REPOLARIZATION</strong>. Voltage drops, dips below resting (refractory period), then leak channels reset to −70 mV.",
   setup() {
     clearField();
     for (let i = 0; i < 10; i++) {
@@ -1753,6 +1782,7 @@ const scenePropagation = {
   dynamicVoltage: true,
   graphIdx: 1,
   notes: "The Na⁺ that rushed in is <strong>stuck</strong>. It cannot cross back (Na⁺ gates on this patch are locked) and it cannot leak through the membrane. Because it is all positive, it <strong>repels itself sideways</strong> toward the next patch. Watch it drift right. When the wave of Na⁺ reaches the <strong>next patch's gate</strong>, the voltage there crosses <strong>threshold</strong> and that gate <strong>TRIGGERS OPEN</strong>. Na⁺ rushes in. The process <strong>repeats</strong> one patch down. That is how the action potential travels.",
+  notebook: "Draw two patches of axon side by side. Show the trapped <strong>Na⁺ pushing rightward</strong> and triggering the next patch's gates to open. That is how the wave travels down the axon.",
   setup() {
     clearField();
     // This patch: fired, Na+ inside, refractory
@@ -2017,7 +2047,7 @@ const sceneFullGraph = {
   phaseColor: '#ff3b3b',
   voltage: null,
   graphIdx: null,
-  sketchPrompt: "<span class=\"pen\">✎</span>Copy the full graph with all labels. Click each phase below to reveal what happens, then write 2–3 sentences tying the whole process together.",
+  notebook: "Copy the full action potential graph above. Label all 5 phases. Click each phase card below to reveal what happens, then write 2-3 sentences tying the whole process together.",
   notes: `<strong>Put it all together.</strong> The graph above is one action potential in one patch of membrane. Click each phase below to reveal exactly what is happening and which gates are doing the work.
     <div class="phase-breakdown">
       <div class="pb-head">The five phases, in order</div>
@@ -2061,7 +2091,7 @@ const sceneFullGraph = {
   setup() { clearField(); sceneLocal = { drawT: 0 }; },
   update(dt) { sceneLocal.drawT = Math.min(1, sceneLocal.drawT + dt / 3000); },
   draw(ctx, t) {
-    ctx.fillStyle = '#05070f';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
     const gx = 160, gy = 70, gw = W - 260, gh = H - 180;
     const tMax = 5.5, mvMin = -95, mvMax = 50;
@@ -2287,7 +2317,7 @@ function renderMinigraph(activeIdx) {
     const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${mvToMiniY(p.mv)}`).join(' ');
     const path = document.createElementNS(svgNS, "path");
     path.setAttribute("d", d);
-    path.setAttribute("stroke", "#6ee7e5");
+    path.setAttribute("stroke", "#6366f1");
     path.setAttribute("stroke-width", "2.5");
     path.setAttribute("fill", "none");
     path.setAttribute("stroke-linecap", "round");
@@ -2302,7 +2332,7 @@ function renderMinigraph(activeIdx) {
     minigraph.appendChild(glow);
     const dot = document.createElementNS(svgNS, "circle");
     dot.setAttribute("cx", cur.x); dot.setAttribute("cy", mvToMiniY(cur.mv));
-    dot.setAttribute("r", 4); dot.setAttribute("fill", "#6ee7e5");
+    dot.setAttribute("r", 4); dot.setAttribute("fill", "#6366f1");
     minigraph.appendChild(dot);
   }
 }
@@ -2314,7 +2344,7 @@ const phaseNameEl = document.getElementById("phaseName");
 const voltageEl = document.getElementById("voltage");
 const notesEl = document.getElementById("notes");
 const stepHeadingEl = document.getElementById("stepHeading");
-const sketchPromptEl = document.getElementById("sketchPrompt");
+const notebookTextEl = document.getElementById("notebookText");
 const stepIndicator = document.getElementById("stepIndicator");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -2338,8 +2368,8 @@ function setScene(i) {
   }
   notesEl.innerHTML = s.notes;
   stepHeadingEl.textContent = s.phase;
-  sketchPromptEl.innerHTML = s.sketchPrompt
-    || "<span class=\"pen\">✎</span>Now sketch a quick diagram of what you see above. Use color where it helps.";
+  notebookTextEl.innerHTML = s.notebook
+    || "Sketch a quick diagram of what you see above. Use color where it helps.";
   stepIndicator.textContent = `${pad2(i + 1)} / ${pad2(scenes.length)}`;
   prevBtn.disabled = i === 0;
   nextBtn.disabled = i === scenes.length - 1;
@@ -2446,7 +2476,7 @@ function tick(ts) {
   }
   // clear with subtle vignette
   ctx.save();
-  ctx.fillStyle = '#05070f';
+  ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, W, H);
   ctx.globalAlpha = sceneFadeT;
   s.draw(ctx, animT);
